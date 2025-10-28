@@ -3,6 +3,8 @@
 Mac Wallpaper Rotator - Changes wallpapers at fixed intervals
 
 Note: doesn't work if wallpaper is currently set to rotate.
+
+Written by Claude AI (Sonnet 4.5).
 """
 
 import argparse

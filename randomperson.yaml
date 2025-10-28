@@ -164,8 +164,8 @@ p:
         - densely-freckled
 
     skin:
-        - skin with {small|large|prominent} moles
-        - skin with {faint|noticeable|prominent} scars
+        - 0.1::skin with {small|large|prominent} moles
+        - 0.1::skin with {faint|noticeable|prominent} scars
         - skin
 
     haircut:

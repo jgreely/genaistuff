@@ -1,0 +1,451 @@
+# converted from the SwarmUI Discord:
+# https://discord.com/channels/1243166023859961988/1396143088560242708
+#
+# fixed typos, added ethnicities to nudge Qwen Image away from its
+# stock faces; needs weighting to improve realism.
+
+p:
+    random:
+        - ${g=man}${pn=he}${pp=his}${h=has}__p/prompt__
+        - ${g=woman}${pn=she}${pp=her}${h=has}__p/prompt__
+        - 0.1::${g=person}${pn=they}${pp=their}${h=have}__p/prompt__
+
+    prompt:
+        (analog photography.:2) in __p/setting__ setting.
+
+        The __p/ethnic__ ${g} is in ${pp} __p/agetype__ __p/age__.
+        ${pn} ${h} a distinctive __p/faceshape__ face, looking
+        __p/expression__.
+
+        ${pn} ${h} __p/skintone__ __p/complexion__ __p/skin__,
+        __p/haircut__ __p/haircolor__ hair with a __p/hairline__;
+        __p/forehead1__ and __p/forehead2__ __p/forehead3__ forehead.
+
+        ${pp} __p/eyebrows1__ eyebrows are __p/eyebrows2__ and
+        __p/eyebrows3__, __p/eyebrows4__, __p/eyeshape__ __p/eyesize__
+        eyes show a beautiful __p/eyecolor__ hue __p/eyedepth__,
+        __p/lash1__ __p/lash2__ __p/lash3__ eyelashes.
+
+        ${pn} sports a __p/nosesize__ __p/noseshape__, ${pp} cheeks
+        are __p/cheekstyle__.
+
+        ${pn} ${h} __p/lipsize__ __p/lipstyle__ __p/lips__.
+
+        ${pp} chin is __p/chinsize__ and __p/chinshape__, ${pn} ${h} a
+        __p/jawshape__ and __p/jawline__ jawline, completing ${pp}
+        face.
+
+        ${pp} build is __p/build__, ${pn} stands in an __p/posture__
+        posture, showcasing ${pp} __p/shoulders__ and __p/chest__.
+
+        ${pp} arms are __p/arms__, completed with __p/handtype__
+        hands.
+
+        ${pn} wears a __p/style__ __p/material__ __p/top__ contrasting
+        with ${pp} hair.
+
+    ethnic:
+        - African
+        - Afro-Caribbean
+        - 1.5::American
+        - 0.5::Central-Asian
+        - 0.5::East-Asian
+        - Native-American
+        - Inuit
+        - Latin-American
+        - Middle-Eastern
+        - Pacific-Islander
+        - Russian
+        - Scandinavian
+        - South-American
+        - 0.5::Southeast-Asian
+        - Sub-Saharan African
+        - 2::Western-European
+
+    setting:
+        - an indoor
+        - an outdoor
+        - a studio
+
+    agetype:
+        - early
+        - late
+        - ""
+
+    age:
+        - 1.5::teen years
+        - 2::twenties
+        - 2::thirties
+        - 2::forties
+        - 2::fifties
+        - 1.5::sixties
+        - seventies
+        - eighties
+
+    faceshape:
+        - oval
+        - round
+        - square
+        - heart-shaped
+        - long
+        - oblong
+        - diamond-shaped
+        - triangular
+
+    expression:
+        - pleasant with a gentle smile
+        - energetic with a broad smile and a cheerful grin
+        - radiant, beaming with joy and sparkled eyes
+        - amused, with a slight smirk and a twinkle in the eye
+        - contented, in a peaceful and serene expression
+        - playful, with a mischievous glint, hinting at fun
+        - warm and welcoming
+        - hopeful and optimistic
+        - blissful, lost in happy thoughts
+        - thoughtful, deeply pensive
+        - curious, eyes wide with interest and head tilted on a side
+        - observant and meticulous
+        - introspective, lost in reflection
+        - calm and peaceful
+        - serene, untroubled
+        - focused, intently concentrating
+        - weary and exhausted
+        - melancholic and wistful
+        - pensive with a hint of sadness
+        - resigned in acceptance
+        - wistful, longing for the past
+        - anxious with worry in the eyes
+        - reserved, keeping it formal
+        - overjoyed in exuberant happiness
+        - very sad in a genuine sorrow with tears
+        - angry, bursting in rage
+        - surprised, startled with wide-eyed wonder
+        - fearful, apprehensive and scared
+        - determined with strong will and resolve
+        - intense, experiencing a deep feeling
+        - smiling sadly
+        - thoughtfully amused
+        - weary but determined
+        - curiously skeptical and doubtful
+        - serenely hopeful
+
+    skintone:
+        - porcelain
+        - ivory
+        - rosy-fair
+        - pale-golden
+        - peach
+        - golden
+        - olive
+        - light-tan
+        - tan
+        - bronze
+        - caramel
+        - warm-brown
+        - cool-brown
+        - chocolate
+        - deep-bronze
+        - ebony
+        - rich dark-brown
+        - honeyed
+        - copper
+        - russet
+
+    complexion:
+        - flawless
+        - velvety
+        - polished
+        - dimpled
+        - porous
+        - weathered
+        - sun-kissed
+        - bumpy
+        - freckled
+        - densely-freckled
+
+    skin:
+        - skin with {small|large|prominent} moles
+        - skin with {faint|noticeable|prominent} scars
+        - skin
+
+    haircut:
+        - pixie cut
+        - buzzcut
+        - chin-length
+        - jawline-length
+        - shoulder-length
+        - collarbone-length
+        - mid-back length
+        - waist-length
+        - long
+        - classic bob
+        - layered bob
+
+    haircolor:
+        - jet-black
+        - raven-black
+        - soft-black
+        - chocolate-brown
+        - dark-mahogany
+        - chestnut-brown
+        - medium-brown
+        - light-brown
+        - ash-brown
+        - auburn
+        - platinum-blonde
+        - golden-blonde
+        - honey-blonde
+        - strawberry-blonde
+        - ash-blonde
+        - dirty-blonde
+        - fiery-red
+        - ginger-red
+        - burgundy-red
+        - silver-gray
+        - charcoal-grey
+        - snow-white
+        - salt-and-pepper
+        - bronze-colored
+        - mahogany-colored
+        - russet
+        - 0.1::ombre
+        - 0.5::blue
+
+    hairline:
+        - high hairline
+        - low hairline
+        - widow's peak
+        - straight hairline
+
+    forehead1:
+        - high
+        - medium
+        - low
+
+    forehead2:
+        - wide
+        - narrow
+        - average
+
+    forehead3:
+        - sloping
+        - straight
+        - with prominent brow bone
+
+    eyebrows1:
+        - ""
+        - sparse
+        - dense
+        - regular
+        - asymmetrical
+
+    eyebrows2:
+        - thin
+        - medium
+        - thick
+        - bushy
+
+    eyebrows3:
+        - arched
+        - straight
+        - angled upward
+        - angled downward
+        - rounded
+        - curved
+
+    eyebrows4:
+        - matching hair color
+        - darker than hair
+        - lighter than hair
+
+    eyeshape:
+        - almond-shaped
+        - round
+        - upturned
+        - downturned
+        - hooded
+        - monolid
+        - ""
+
+    eyesize:
+        - large
+        - medium
+        - small
+
+    eyecolor:
+        - sky blue
+        - deep sapphire blue
+        - grey-blue
+        - turquoise
+        - emerald green
+        - olive green
+        - hazel green
+        - dark chocolate brown
+        - light hazel brown
+        - golden brown
+        - mahogany brown
+        - mixture of brown, green, and gold
+        - silver grey
+        - slate grey
+
+    eyedepth:
+        - ""
+        - ", deep-set into ${pp} face"
+        - ", protruding forward"
+
+    lash1:
+        - short
+        - medium
+        - long
+
+    lash2:
+        - ""
+        - sparse
+        - thick
+
+    lash3:
+        - straight
+        - naturally curled
+        - 0.2::heavily curled with mascara
+
+    nosesize:
+        - large
+        - medium
+        - small
+        - pointed
+
+    noseshape:
+        - straight nose, with a classic and balanced profile
+        - roman nose with a prominent bridge and a hump
+        - greek nose, with a straight bridge and refined tip
+        - snub nose, upturned and delicate
+        - aquiline nose, hooked and curved downwards
+        - button nose, nicely rounded
+        - hawk-like nose, strong and prominent
+        - wide nose, broad at the nostrils
+        - narrow nose with a thin bridge
+        - long nose, extended length from brow to tip
+
+    cheekstyle:
+        - rosy, naturally flushed
+        - dimpled with cute indentations
+        - freckled
+        - sun-kissed
+        - sculpted sharp
+        - softly-curved
+
+    lipsize:
+        - large
+        - medium
+        - small
+
+    lipstyle:
+        - full, voluminous
+        - thin, delicate
+        - wide, spreading across ${pp} face
+        - distinctive bow-shaped
+        - softly-curved round
+        - down-turned drooping
+        - ""
+
+    lips:
+        - lips.
+        - lips with a defined cupid's bow.
+        - lips with a prominent lower lip.
+        - lips with a prominent upper lip.
+
+    chinsize:
+        - large
+        - medium
+        - small
+        - strong
+        - weak
+
+    chinshape:
+        - rounded
+        - square
+        - pointed
+        - cleft
+        - receding
+        - prominent
+        - doubled, with fullness under the chin
+
+    jawshape:
+        - strong
+        - soft
+        - square
+        - rounded
+        - well defined
+        - soft
+
+    jawline:
+        - wide
+        - narrow
+
+    build:
+        - slender
+        - lean
+        - muscular
+        - stocky
+        - robust
+        - petite
+        - large-framed
+
+    posture:
+        - upright
+        - slouching
+        - stooped
+        - relaxed
+        - casual
+        - tense
+        - stiff
+
+    shoulders:
+        - broad
+        - wide
+        - narrow
+        - sloping
+        - rounded
+        - square
+
+    chest:
+        - full
+        - flat
+        - narrow
+
+    arms:
+        - long
+        - short
+        - muscular
+        - toned
+        - slender
+        - lean
+        - strong
+        - robust
+
+    handtype:
+        - delicate
+        - rough
+        - small
+        - large
+
+    style:
+        - formal
+        - casual
+        - loose
+        - fitted
+        - tight
+
+    material:
+        - cotton
+        - silk
+        - wool
+        - denim
+        - leather
+
+    top:
+        - shirt
+        - blouse
+        - t-shirt
+        - sweater
+        - jacket

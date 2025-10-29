@@ -6,16 +6,16 @@
 
 p:
     random:
-        - ${g=man}${pn=he}${pp=his}${h=has}__p/prompt__
-        - ${g=woman}${pn=she}${pp=her}${h=has}__p/prompt__
-        - 0.1::${g=person}${pn=they}${pp=their}${h=have}__p/prompt__
+        - ${g=man}${pn=he}${pp=his}${h=has}${f=__p/facialhair__}__p/prompt__
+        - ${g=woman}${pn=she}${pp=her}${h=has}${f=__p/makeup__}__p/prompt__
+        - 0.1::${g=person}${pn=they}${pp=their}${h=have}${f=__p/facedecor__}__p/prompt__
 
     prompt:
         (analog photography.:2) in __p/setting__ setting.
 
         The __p/ethnic__ ${g} is in ${pp} __p/agetype__ __p/age__.
         ${pn} ${h} a distinctive __p/faceshape__ face, looking
-        __p/expression__.
+        __p/expression__. ${pn} ${h} ${f}.
 
         ${pn} ${h} __p/skintone__ __p/complexion__ __p/skin__,
         __p/haircut__ __p/haircolor__ hair with a __p/hairline__;
@@ -36,7 +36,8 @@ p:
         face.
 
         ${pp} build is __p/build__, ${pn} stands in an __p/posture__
-        posture, showcasing ${pp} __p/shoulders__ and __p/chest__.
+        posture, showcasing ${pp} __p/shoulders__ shoulders and
+        __p/chest__ chest.
 
         ${pp} arms are __p/arms__, completed with __p/handtype__
         hands.
@@ -65,7 +66,7 @@ p:
     setting:
         - an indoor
         - an outdoor
-        - a studio
+        - 0.5::a studio
 
     agetype:
         - early
@@ -109,18 +110,18 @@ p:
         - calm and peaceful
         - serene, untroubled
         - focused, intently concentrating
-        - weary and exhausted
+        - 0.5::weary and exhausted
         - melancholic and wistful
         - pensive with a hint of sadness
         - resigned in acceptance
         - wistful, longing for the past
-        - anxious with worry in the eyes
+        - 0.5::anxious with worry in the eyes
         - reserved, keeping it formal
         - overjoyed in exuberant happiness
-        - very sad in a genuine sorrow with tears
-        - angry, bursting in rage
+        - 0.5::very sad in a genuine sorrow with tears
+        - 0.5::angry, bursting in rage
         - surprised, startled with wide-eyed wonder
-        - fearful, apprehensive and scared
+        - 0.5::fearful, apprehensive and scared
         - determined with strong will and resolve
         - intense, experiencing a deep feeling
         - smiling sadly
@@ -449,3 +450,49 @@ p:
         - t-shirt
         - sweater
         - jacket
+
+    facialhair:
+        - 10::no facial hair
+        - a neatly-trimmed mustache
+        - a vandyke beard
+        - a bushy mustache
+        - a full beard
+        - a neckbeard
+        - a pencil-thin mustache
+        - a goatee
+        - a goatee and mustache
+        - light stubble
+        - heavy stubble
+        - mutton-chops
+
+    makeup:
+        - beach or summer makeup
+        - Bridal makeup
+        - casual weekend makeup
+        - festive holiday makeup
+        - fresh and dewy makeup
+        - glamorous evening makeup
+        - natural "no-makeup" makeup
+        - natural everyday makeup
+        - office/work makeup
+        - prom makeup
+        - red carpet makeup
+        - romantic date night makeup
+        - runway/editorial makeup
+        - soft and ethereal makeup
+        - sophisticated and polished makeup
+        - vintage-inspired makeup
+
+    facedecor:
+        - __p/facialhair__
+        - __p/makeup__
+        - __p/piercetats__
+
+    piercetats:
+        - a pierced eyebrow
+        - a pierced nostril
+        - a pierced septum
+        - a pierced lip
+        - multiple piercings
+        - tribal tattoos
+        - prison tattoos

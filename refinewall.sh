@@ -101,7 +101,7 @@ for SRC in "$@"; do
     # (in case it was part of a large batch)
     #
     JSON=$(exiftool -b -parameters "$SRC" |
-        jq -c '.sui_image_params|del(.images)' |
+        jq -c '.sui_image_params|del(.images,.swarm_version)' |
         jo -f - session_id=$SESSION_ID images=1 "${REFINE[@]}" "${VARY[@]}"
     )
     # convert loras & loraweights from arrays into comma-separated strings

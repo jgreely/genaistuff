@@ -109,6 +109,9 @@ for SRC in "$@"; do
     if [ "$(jq .loras <<<"$JSON")" != "null" ]; then
         JSON=$(jq -c '.loras |= join(",")' <<<"$JSON")
         JSON=$(jq -c '.loraweights |= join(",")' <<<"$JSON")
+        if [ "$(jq .lorasectionconfinement <<<"$JSON")" != "null" ]; then
+            JSON=$(jq -c '.lorasectionconfinement |= join(",")' <<<"$JSON")
+        fi
     fi
 
     OUTPUT=$(CURL --json "$JSON" $BASEURL/API/GenerateText2Image)
@@ -123,7 +126,7 @@ for SRC in "$@"; do
     GENTIME=$(exiftool -b -parameters "$OUTFILE" |
         jq -r .sui_extra_data.generation_time)
     # write original filename into EXIF data to preserve the source
-    exiftool -overwrite_original -DocumentName=$(basename "$SRC") $OUTFILE
+    exiftool -q -overwrite_original -DocumentName=$(basename "$SRC") $OUTFILE
     echo $GENTIME $OUTFILE
 done
 exit

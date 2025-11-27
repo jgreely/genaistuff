@@ -19,6 +19,8 @@ import re
 import os
 import sys
 import argparse
+import json
+import yaml
 from pathlib import Path
 from dynamicprompts.generators import RandomPromptGenerator
 from dynamicprompts.generators import CombinatorialPromptGenerator
@@ -77,6 +79,10 @@ parser.add_argument('-t', '--tee',
     action = 'store_true',
     help = 'tee the output to STDERR, so you can see it and pipe it'
 )
+parser.add_argument('-j', '--json',
+    action = 'store_true',
+    help = 'convert output from a.b=foo to JSON valid for Flux2'
+)
 parser.add_argument('prompts',
     nargs = '*',
     help = 'Prompts to process'
@@ -114,17 +120,23 @@ elif args.everything:
             print(result)
     sys.exit()
 for prompt in args.prompts:
+    # transform JSON to pass through intact
+    if args.json:
+        prompt = yaml.safe_load(prompt)
     for result in generator.generate(prompt, args.count):
         # normalize the punctuation and spacing
-        cleaned = multi_replace(result, [
-            ( r' ,',         ','  ),
-            ( r',(?=[^ ])',  ', ' ),
-            ( r' +',         ' '  ),
-            ( r'\.(?=[^ ])', '. ' ),
-            ( r'\. *\. *',   '. ' ),
-            ( r' *\n',       ' '  ),
-            ( r'(?<=\. )([a-z])', lambda m: m.group(1).upper())
-        ])
+        if args.json:
+            cleaned = json.dumps(yaml.safe_load(result.lstrip()))
+        else:
+            cleaned = multi_replace(result, [
+                ( r' ,',         ','  ),
+                ( r',(?=[^ ])',  ', ' ),
+                ( r' +',         ' '  ),
+                ( r'\.(?=[^ ])', '. ' ),
+                ( r'\. *\. *',   '. ' ),
+                ( r' *\n',       ' '  ),
+                ( r'(?<=\. )([a-z])', lambda m: m.group(1).upper())
+            ])
         print(cleaned)
         if args.tee:
             print(cleaned, file=sys.stderr)

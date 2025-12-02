@@ -3,6 +3,12 @@
 This is a dumping ground for small genai-related scripts and data
 files.
 
+* swarmctl.py - CLI for SwarmUI API; commands are:
+    gen - create an image based on rules, metadata, and options
+    params - extract parameters from PNG, JPG, and JSON files
+    list-rules - list canned parameter sets (built-in or ~/.swarmctl)
+    list-models - list available base models, loras, or vae
+
 * sd-dynamic - CLI wrapper to use the popular
   [dynamicprompts](https://github.com/adieyal/dynamicprompts)
   library with image-generation software that doesn't support
@@ -14,14 +20,6 @@ files.
 * waifupaper.py - MacOS wallpaper-rotation script with more
   options than the standard control-panel settings.
 
-* refinewall.sh - SwarmUI CLI that re-generates an image with
-  refining and upscaling turned on (specifically for 4K wallpaper
-  from 1024x576/576x1024). -w/-t options to override the base size
-  to 1920x1080/1080x1920 and upscaling to 2x, for better results
-  from models that can handle the higher base resolution. -v
-  option to generate variations to try to eliminate defects (start
-  small, around 0.05).
-
 * swarmui-png2jpg.sh - convert PNG to JPG, preserving SwarmUI metadata.
   uses cjpeg for speed and quality, which requires first converting
   to PPM format.
@@ -30,3 +28,13 @@ files.
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with
   some typos corrected and some weights added. Use as __p/random__.
+
+## Obsolete (see swarmctl.py)
+
+* refinewall.sh - SwarmUI CLI that re-generates an image with
+  refining and upscaling turned on (specifically for 4K wallpaper
+  from 1024x576/576x1024). -w/-t options to override the base size
+  to 1920x1080/1080x1920 and upscaling to 2x, for better results
+  from models that can handle the higher base resolution. -v
+  option to generate variations to try to eliminate defects (start
+  small, around 0.05).

@@ -15,18 +15,6 @@ swarmctl [opt] list-params [search]
 
 Global options:
     -o|--outformat "PNG|JPG" request specific format from server
-    -f filename format (simple variable substitution using Template)
-        from string import Template
-        print(Template('$pre-${set}-$seq.$ext').safe_substitute({
-            'pre': 'prefix',
-            'set': 'set',
-            'ext': 'png',
-            # updated for each image
-            'ymd': '20251122',
-            'hms': '140412',
-            'seq': '0005' # 0-padded to 4 by default
-        }))
-
 """
 
 import os
@@ -40,6 +28,8 @@ from PIL import Image
 import exifread
 import math
 import importlib.resources
+from string import Template
+from datetime import datetime
 
 # canned sets of parameters; override by creating ~/.swarmctl
 # 
@@ -279,8 +269,11 @@ class swarmui:
 #TODO: implement these
 #@click.option('-f', '--format', default='png',
 #    help='image format to save generated images (png|jpg, default png)')
-#@click.option('-t', '--template', default='$pre-$set-$seq.$ext',
-#    help='filename template for generated images (default "$pre-$set-$seq.$ext")')
+@click.option('-t', '--template', default='$pre-$set-$seq.$ext',
+    help="""
+        filename template for generated images (default "$pre-$set-$seq.$ext").
+        The following variables are available: pre, set, seq, ext, ymd, hms.
+    """)
 @click.option('--pre', default='swarmui',
     help='template variable "pre"')
 @click.option('--set', default='img',
@@ -289,7 +282,7 @@ class swarmui:
     help='template variable "seq" initial value (auto-increments)')
 @click.option('--pad', default=4,
     help='zero-padding length for "seq" (default 4)')
-def cli(host, port, aspect, sidelength, pre, set, seq, pad):
+def cli(host, port, aspect, sidelength, pre, set, seq, pad, template):
     pass
 
 # in general, most params should be pulled from JSON files, config sections,
@@ -381,7 +374,8 @@ def gen(ctx, model, loras, params, rules, sources, dry_run):
             image_params['width'] = width
             image_params['height'] = height
         outname = format_filename(pre=s.params['pre'],
-            set=s.params['set'], pad=s.params['pad'], seq=seq)
+            set=s.params['set'], pad=s.params['pad'], seq=seq,
+            template=ctx.parent.params['template'])
         if dry_run:
             print(f"output file: {outname}")
             print(f"session_id: {session_id}")
@@ -499,7 +493,8 @@ def rename(ctx, dry_run, files):
         base, ext = os.path.splitext(file)
         ext = ext.removeprefix('.')
         outname = format_filename(pre=params['pre'],
-            set=params['set'], pad=params['pad'], seq=seq, ext=ext)
+            set=params['set'], pad=params['pad'], seq=seq, ext=ext,
+            template=ctx.parent.params['template'])
         if dry_run:
             print(file, outname)
         else:
@@ -539,9 +534,21 @@ def jpg(ctx, dry_run, resize, files):
 
 
 def format_filename(*, pre="swarmui", set="img", seq=1,
-    pad=4, ext="png"):
+    pad=4, ext="png", template:str):
     """return a consistently-formatted filename for a sequenced image"""
-    return f"{pre}-{set}-{str(seq).zfill(pad)}.{ext}"
+    if template:
+        now = datetime.now()
+        # TODO: add more filename-formatting variables
+        return Template(template).safe_substitute({
+            'pre': pre,
+            'set': set,
+            'seq': str(seq).zfill(pad),
+            'ext': ext,
+            'ymd': now.strftime('%Y%m%d'),
+            'hms': now.strftime('%H%M%S')
+        })
+    else:
+        return f"{pre}-{set}-{str(seq).zfill(pad)}.{ext}"
 
 
 def get_aspect_pixels(ratio:str, *, side=1024, rounding=64):

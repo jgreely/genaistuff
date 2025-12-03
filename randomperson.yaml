@@ -11,7 +11,7 @@ p:
         - 0.1::${g=person}${pn=they}${pp=their}${h=have}${f=__p/facedecor__}__p/prompt__
 
     prompt:
-        (analog photography.:2) in __p/setting__ setting.
+        ${style:(analog photography.:2)} in __p/setting__ setting.
 
         The __p/ethnic__ ${g} is in ${pp} __p/agetype__ __p/age__.
         ${pn} ${h} a distinctive __p/faceshape__ face, looking

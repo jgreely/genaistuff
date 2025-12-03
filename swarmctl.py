@@ -12,18 +12,11 @@ TODO: more commands to implement
 swarmctl [opt] list-params [search]
     list-params - valid image-gen parameters, filtered by search string
 
-swarmctl [--pre] [--set] [--seq] [--pad] rename *.png
-    rename files according to a pattern (currently the following
-    format is baked in: "$pre-$set-$seq.$fmt"; note these are
-    global options)
-    [png|jpg] - one or more files to rename; original extension will
-        be used; this does not convert format
-
 swarmctl [opt] tojpg -r 50 -q high *.png
     -q|--quality set JPEG quality (Pillow presets high|med|low|etc)
     -r|--resize% (Pillow Image.resize(int(im.width * scale/100),
          int(im.height * scale/100))) # not recommended for upscaling
-    --strip remove all metadata (default transfers SwarmUI metadata)
+    -s|--strip remove all metadata (default transfers SwarmUI metadata)
 
 Global options:
     -o|--outformat "PNG|JPG" request specific format from server
@@ -493,6 +486,33 @@ def list_models(ctx, type, verbose, search):
                         print("    ", model[key])
             else:
                 print(model['name'])
+
+@cli.command()
+@click.option('-n', '--dry-run', is_flag=True,
+    help='just print the before/after filenames')
+@click.argument('files', nargs=-1)
+@click.pass_context
+# TODO: add format override
+def rename(ctx, dry_run, files):
+    """
+    rename files to use a consistent format based on --pre|set|seq;
+    preserves existing file extension.
+    """
+    params = ctx.parent.params
+    seq = params['seq']
+    for file in files:
+        base, ext = os.path.splitext(file)
+        ext = ext.removeprefix('.')
+        outname = format_filename(pre=params['pre'],
+            set=params['set'], pad=params['pad'], seq=seq, ext=ext)
+        if dry_run:
+            print(file, outname)
+        else:
+            try:
+                os.rename(file, outname)
+            except Exception as e:
+                print(f"rename '{file}' to '{outname}: {e}")
+        seq += 1
 
 
 def format_filename(*, pre="swarmui", set="img", seq=1,

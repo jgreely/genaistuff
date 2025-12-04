@@ -6,7 +6,7 @@ files.
 * sui.py - CLI for SwarmUI API; commands are:
     gen - create an image based on rules, metadata, and options
     params - extract parameters from PNG, JPG, and JSON files
-    list-rules - list canned parameter sets (built-in or ~/.swarmctl)
+    list-rules - list canned parameter sets (built-in or ~/.sui)
     list-models - list available base models, loras, or vae
     rename - batch-rename image files based on --pre|set|seq options
     jpg - batch-convert image files to JPG, optionally resizing them
@@ -31,7 +31,7 @@ files.
   posted to the SwarmUI Discord channel by user Hippotes, with
   some typos corrected and some weights added. Use as __p/random__.
 
-## Obsolete (see swarmctl.py)
+## Obsolete (see sui.py)
 
 * refinewall.sh - SwarmUI CLI that re-generates an image with
   refining and upscaling turned on (specifically for 4K wallpaper

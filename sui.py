@@ -10,7 +10,7 @@ TODO: switch to click.echo for handling Unicode properly under Windows;
 
 TODO: more commands to implement
 
-swarmctl [opt] list-params [search]
+sui [opt] list-params [search]
     list-params - valid image-gen parameters, filtered by search string
 
 Global options:
@@ -31,7 +31,7 @@ import importlib.resources
 from string import Template
 from datetime import datetime
 
-# canned sets of parameters; override by creating ~/.swarmctl
+# canned sets of parameters; override by creating ~/.sui
 # 
 default_rules = """
 # 'rounding' field is used internally to calculate the resolutions
@@ -90,12 +90,12 @@ class swarmui:
         self._host = host
         self._port = port
         self._headers = {
-            'user-agent': 'swarmctl/1.0.0',
+            'user-agent': 'sui/1.0.0',
             'Content-Type': 'application/json',
             'Accept': 'application/json'
         }
         self._config = configparser.RawConfigParser()
-        config_file = os.path.join(os.path.expanduser("~"), ".swarmctl")
+        config_file = os.path.join(os.path.expanduser("~"), ".sui")
         if os.path.isfile(config_file):
             self._config.read(config_file)
         else:
@@ -121,7 +121,7 @@ class swarmui:
         self._change_usersettings(session=response['session_id'])
         return response['session_id']
 
-    def generate_image(self, params:dict, *, outfile="swarmctl-output.png",
+    def generate_image(self, params:dict, *, outfile="sui-output.png",
         session:str):
         params['session_id'] = session
         params['images'] = 1
@@ -422,11 +422,22 @@ def params(ctx, json_output, verbose, prompt, files):
             print(json.dumps(output[0], sort_keys=True, indent=4))
 
 @cli.command()
+@click.argument('files', nargs=-1)
+@click.pass_context
+def prompt(ctx, files):
+    """shortcut for 'params -p'"""
+    s = swarmui()
+    for file in files:
+        params = s.get_file_params(file)
+        if params:
+            print(params['prompt'])
+
+@cli.command()
 @click.option('-v', '--verbose', is_flag=True,
-    help='print contents of all rules for ~/.swarmctl')
+    help='print contents of all rules for ~/.sui')
 @click.pass_context
 def list_rules(ctx, verbose):
-    """list all rules defined in ~/.swarmctl or default config"""
+    """list all rules defined in ~/.sui or default config"""
     s = swarmui()
     for rule in s.list_rules():
         if verbose:

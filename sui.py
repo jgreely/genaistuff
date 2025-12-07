@@ -19,6 +19,7 @@ Global options:
 
 import os
 import sys
+import base64
 import configparser
 import json
 import click
@@ -148,7 +149,8 @@ class swarmui:
                 metadata = image.info
                 params = dict()
                 if image.format == 'PNG':
-                    if p := metadata["parameters"]:
+                    if 'parameters' in metadata:
+                        p = metadata["parameters"]
                         if j := json.loads(p):
                             if sui := j["sui_image_params"]:
                                 params = sui
@@ -157,7 +159,8 @@ class swarmui:
                 elif image.format == 'JPEG':
                     with open(file, "rb") as img:
                         tags = exifread.process_file(img, details=True)
-                        if p := str(tags['EXIF UserComment']):
+                        if 'EXIF UserComment' in tags:
+                            p = str(tags['EXIF UserComment'])
                             if j := json.loads(p):
                                 if sui := j["sui_image_params"]:
                                     params = sui
@@ -239,10 +242,16 @@ class swarmui:
 
     def _download_image(self, imagefile:str, outputfile:str):
         """download generated image from SwarmUI server"""
-        response = self._get(f"/{imagefile}")
-        with open(outputfile, mode="wb") as output:
-            for chunk in response.iter_content(chunk_size=16*1024):
-                output.write(chunk)
+        if 'base64' in imagefile:
+            b64 = imagefile.split(',')[1]
+            img = base64.b64decode(b64)
+            with open(outputfile, mode="wb") as output:
+                output.write(img)
+        else:
+            response = self._get(f"/{imagefile}")
+            with open(outputfile, mode="wb") as output:
+                for chunk in response.iter_content(chunk_size=16*1024):
+                    output.write(chunk)
 
     # swarmui request format is slightly different from returned metadata
     # (array fields: loras, loraweights, lorasectionconfinement)
@@ -288,7 +297,10 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template):
 # in general, most params should be pulled from JSON files, config sections,
 # or previous images; only overrides should be on cmdline
 
-@cli.command()
+@cli.command(epilog="""
+    Note that if you set the parameter "donotsave=true", the resulting
+    image will not include metadata.
+""")
 @click.option('-m', '--model', type=str,
     help='base model to render images with')
 @click.option('-l', '--loras', type=str, multiple=True,

@@ -240,8 +240,7 @@ class swarmui:
         params = {
             'session_id': session,
             'settings': {
-                'outpathbuilder.format': 'raw/[year]-[month]-[day]/[year][month][day]-[hour][minute][request_time_inc]-[model]-[prompthash]',
-                'fileformat.imageformat': 'PNG',
+                'fileformat.reformattransientimages': True,
                 'fileformat.savemetadata': True
             }
         }

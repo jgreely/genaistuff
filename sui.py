@@ -27,6 +27,7 @@ import click
 import requests
 from requests.exceptions import HTTPError
 from PIL import Image
+from PIL.PngImagePlugin import PngInfo
 import exifread
 import math
 import importlib.resources
@@ -127,6 +128,7 @@ class swarmui:
         session:str):
         params['session_id'] = session
         params['images'] = 1
+        params['imageformat'] = 'PNG'
         for noise in ['swarm_version', 'rounding']:
             if noise in params:
                 del params[noise]
@@ -136,7 +138,11 @@ class swarmui:
         response = self._post("/API/GenerateText2Image", params=params,
             timeout=3600)
         imagefile = response['images'][0]
-        self._download_image(imagefile, outfile)
+        if 'personalnote' in params:
+            source = params['personalnote']
+        else:
+            source = ""
+        self._download_image(imagefile, outfile, source)
         return(outfile)
 
     def get_file_params(self, file:str, verbose=False):
@@ -241,7 +247,7 @@ class swarmui:
         }
         response = self._post("/API/ChangeUserSettings", params=params)
 
-    def _download_image(self, imagefile:str, outputfile:str):
+    def _download_image(self, imagefile:str, outputfile:str, source:str):
         """download generated image from SwarmUI server"""
         if 'base64' in imagefile:
             b64 = imagefile.split(',')[1]
@@ -253,9 +259,18 @@ class swarmui:
             for chunk in response.iter_content(chunk_size=16*1024):
                 img_stream.write(chunk)
         output = Image.open(img_stream)
+        meta = output.info
+        newmeta = PngInfo()
+        if 'parameters' in meta:
+            newmeta.add_text('parameters', meta['parameters'])
         if self.crop:
             output = output.crop(self.crop)
-        output.save(outputfile)
+        if source:
+            exif = output.getexif()
+            exif[269] = source # DocumentName
+            output.save(outputfile, exif=exif, pnginfo=newmeta)
+        else:
+            output.save(outputfile, pnginfo=newmeta)
 
     # swarmui request format is slightly different from returned metadata
     # (array fields: loras, loraweights, lorasectionconfinement)
@@ -307,10 +322,7 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
 # in general, most params should be pulled from JSON files, config sections,
 # or previous images; only overrides should be on cmdline
 
-@cli.command(epilog="""
-    Note that if you set the parameter "donotsave=true", the resulting
-    image will not include metadata.
-""")
+@cli.command()
 @click.option('-m', '--model', type=str,
     help='base model to render images with')
 @click.option('-l', '--loras', type=str, multiple=True,
@@ -351,9 +363,8 @@ def gen(ctx, model, loras, params, rules, sources, dry_run):
     for image in images:
         if os.path.isfile(image):
             image_params = s.get_file_params(image)
-            # store original filename in metadata
-            # TODO: transfer to EXIF DocumentName on save
-            image_params['personalnote'] = image
+            # store original filename in metadata (transferred to EXIF)
+            image_params['personalnote'] = os.path.basename(image)
         else:
             image_params = { "prompt": image.rstrip() }
         if rules:

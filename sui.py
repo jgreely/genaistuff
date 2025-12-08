@@ -17,6 +17,7 @@ Global options:
     -o|--outformat "PNG|JPG" request specific format from server
 """
 
+import io
 import os
 import sys
 import base64
@@ -245,13 +246,16 @@ class swarmui:
         if 'base64' in imagefile:
             b64 = imagefile.split(',')[1]
             img = base64.b64decode(b64)
-            with open(outputfile, mode="wb") as output:
-                output.write(img)
+            img_stream = io.BytesIO(img)
         else:
+            img_stream = io.BytesIO()
             response = self._get(f"/{imagefile}")
-            with open(outputfile, mode="wb") as output:
-                for chunk in response.iter_content(chunk_size=16*1024):
-                    output.write(chunk)
+            for chunk in response.iter_content(chunk_size=16*1024):
+                img_stream.write(chunk)
+        output = Image.open(img_stream)
+        if self.crop:
+            output = output.crop(self.crop)
+        output.save(outputfile)
 
     # swarmui request format is slightly different from returned metadata
     # (array fields: loras, loraweights, lorasectionconfinement)
@@ -275,6 +279,11 @@ class swarmui:
     help='aspect ratio as X:Y or as specific XxY pixel resolution')
 @click.option('-s', '--sidelength', default='1024/64',
     help='model sidelength as pixels/divisor (default 1024/64)')
+@click.option('-f', '--fix-resolution', is_flag=True,
+    help='''
+        round XxY resolution up to nearest /64, then crop after generating;
+        this avoids visual artifacts at image edges for certain models
+    ''')
 #TODO: implement these
 #@click.option('-f', '--format', default='png',
 #    help='image format to save generated images (png|jpg, default png)')
@@ -291,7 +300,8 @@ class swarmui:
     help='template variable "seq" initial value (auto-increments)')
 @click.option('--pad', default=4,
     help='zero-padding length for "seq" (default 4)')
-def cli(host, port, aspect, sidelength, pre, set, seq, pad, template):
+def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
+    fix_resolution):
     pass
 
 # in general, most params should be pulled from JSON files, config sections,
@@ -385,6 +395,27 @@ def gen(ctx, model, loras, params, rules, sources, dry_run):
                 side=sidelength, rounding=int(rounding))
             image_params['width'] = width
             image_params['height'] = height
+        s.crop = ()
+        if s.params['fix_resolution']:
+            old_w = image_params['width']
+            old_h = image_params['height']
+            if old_w % 64 > 0:
+                new_w = (old_w // 64 + 1) * 64
+            else:
+                new_w = old_w
+            if old_h % 64 > 0:
+                new_h = (old_h // 64 + 1) * 64
+            else:
+                new_h = old_h
+            if new_w > old_w or new_h > old_h:
+                delta_w = (new_w - old_w) // 2;
+                delta_h = (new_h - old_h) // 2;
+                s.crop = (delta_w, delta_h, old_w + delta_w, old_h + delta_h)
+                if 'refinerupscale' in image_params:
+                    mul = float(image_params['refinerupscale'])
+                    s.crop = tuple([int(mul * i) for i in s.crop])
+                image_params['width'] = new_w
+                image_params['height'] = new_h
         outname = format_filename(pre=s.params['pre'],
             set=s.params['set'], pad=s.params['pad'], seq=seq,
             template=ctx.parent.params['template'])

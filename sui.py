@@ -271,17 +271,17 @@ class swarmui:
         else:
             output.save(outputfile, pnginfo=newmeta)
 
-    # swarmui request format is slightly different from returned metadata
-    # (array fields: loras, loraweights, lorasectionconfinement)
-    # 
-    def _array2str(d:dict, k:str):
-        """convert d[k] from list to comma-separated string"""
-        if type(d[k]) is list:
-            d[k] = ','.join(d[k])
-    def _str2array(d:dict, k:str):
-        """convert d[k] from comma-separated string to list"""
-        if type(d[k]) is str:
-            d[k] = d[k].split(',')
+# swarmui request format is slightly different from returned metadata
+# (array fields: loras, loraweights, lorasectionconfinement)
+# 
+def _array2str(d:dict, k:str):
+    """convert d[k] from list to comma-separated string"""
+    if type(d[k]) is list:
+        d[k] = ','.join(d[k])
+def _str2array(d:dict, k:str):
+    """convert d[k] from comma-separated string to list"""
+    if type(d[k]) is str:
+        d[k] = d[k].split(',')
 
 
 @click.group()
@@ -379,14 +379,16 @@ def gen(ctx, model, loras, params, rules, sources, dry_run):
         if model:
             image_params['model'] = model
         if loras:
-            # TODO: extract optional weights from "lora:1" as string
+            if 'loras' not in image_params:
+                image_params['loras'] = list()
+            if 'loraweights' not in image_params:
+                image_params['loraweights'] = list()
             for lora in loras:
-                if 'loras' not in image_params:
-                    image_params['loras'] = list()
+                loraweight = "1"
+                if ':' in lora:
+                    lora, loraweight = lora.split(':')
                 image_params['loras'].append(lora)
-                if 'loraweights' not in image_params:
-                    image_params['loraweights'] = list()
-                image_params['loraweights'].append("1")
+                image_params['loraweights'].append(loraweight)
         if s.params['aspect']:
             if s.params['sidelength']:
                 if '/' in s.params['sidelength']:
@@ -538,7 +540,7 @@ def list_models(ctx, type, verbose, search):
                     if key in model:
                         print("    ", model[key])
             else:
-                print(model['name'])
+                print(os.path.splitext(model['name'])[0])
 
 @cli.command()
 @click.option('-n', '--dry-run', is_flag=True,

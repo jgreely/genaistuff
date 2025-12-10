@@ -129,6 +129,8 @@ class swarmui:
         params['session_id'] = session
         params['images'] = 1
         params['imageformat'] = 'PNG'
+        if 'save_on_server' not in self.params:
+            params['donotsave'] = True
         for noise in ['swarm_version', 'rounding']:
             if noise in params:
                 del params[noise]
@@ -330,11 +332,16 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
     help='a SwarmUI parameter and value as p=v (overrides argument)')
 @click.option('-r', '--rules', multiple=True,
     help='config-file parameter set (overrides argument)')
+@click.option('-s', '--save-on-server', is_flag=True,
+    help='''
+        tell SwarmUI to save the generated images; by default,
+        only the downloaded copy will exist.
+    ''')
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the arguments that would be used to generate images')
 @click.argument('sources', nargs=-1)
 @click.pass_context
-def gen(ctx, model, loras, params, rules, sources, dry_run):
+def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server):
     """
     Generate images with common parameters and different prompts.
 
@@ -409,8 +416,8 @@ def gen(ctx, model, loras, params, rules, sources, dry_run):
             image_params['height'] = height
         s.crop = ()
         if s.params['fix_resolution']:
-            old_w = image_params['width']
-            old_h = image_params['height']
+            old_w = int(image_params['width'])
+            old_h = int(image_params['height'])
             if old_w % 64 > 0:
                 new_w = (old_w // 64 + 1) * 64
             else:

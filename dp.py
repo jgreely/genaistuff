@@ -123,7 +123,12 @@ for prompt in args.prompts:
     # transform JSON to pass through intact
     if args.json:
         prompt = yaml.safe_load(prompt)
-    for result in generator.generate(prompt, args.count):
+    try:
+        results = generator.generate(prompt, args.count)
+    except Exception as e:
+        print(f"{prompt}: {e}")
+        sys.exit()
+    for result in results:
         # normalize the punctuation and spacing
         if args.json:
             cleaned = json.dumps(yaml.safe_load(result.lstrip()))

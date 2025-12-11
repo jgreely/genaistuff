@@ -28,7 +28,6 @@ import requests
 from requests.exceptions import HTTPError
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
-import exifread
 import math
 import importlib.resources
 from string import Template
@@ -153,7 +152,7 @@ class swarmui:
         if ext.lower() == '.json':
             with open(file, "r") as jfile:
                 return json.load(jfile)
-        elif ext.lower() in ['.png', '.jpg', '.jpeg']:
+        elif ext.lower() in ['.png']: # TODO: *correctly* extract JPG params
             with Image.open(file) as image:
                 metadata = image.info
                 params = dict()
@@ -165,14 +164,6 @@ class swarmui:
                                 params = sui
                             if verbose:
                                 params = j
-                elif image.format == 'JPEG':
-                    with open(file, "rb") as img:
-                        tags = exifread.process_file(img, details=True)
-                        if 'EXIF UserComment' in tags:
-                            p = str(tags['EXIF UserComment'])
-                            if j := json.loads(p):
-                                if sui := j["sui_image_params"]:
-                                    params = sui
                 else:
                     print(f"{file}: no SwarmUI metadata found")
             return params
@@ -308,7 +299,7 @@ def _str2array(d:dict, k:str):
         filename template for generated images (default "$pre-$set-$seq.$ext").
         The following variables are available: pre, set, seq, ext, ymd, hms.
     """)
-@click.option('--pre', default='swarmui',
+@click.option('--pre', default='genai',
     help='template variable "pre"')
 @click.option('--set', default='img',
     help='template variable "set"')
@@ -320,18 +311,19 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
     fix_resolution):
     pass
 
-# in general, most params should be pulled from JSON files, config sections,
-# or previous images; only overrides should be on cmdline
 
 @cli.command()
 @click.option('-m', '--model', type=str,
     help='base model to render images with')
 @click.option('-l', '--loras', type=str, multiple=True,
     help='LoRA models to add (add ":0.x" to set strength < 1)')
-@click.option('-p', '--params', multiple=True,
-    help='a SwarmUI parameter and value as p=v (overrides argument)')
 @click.option('-r', '--rules', multiple=True,
-    help='config-file parameter set (overrides argument)')
+    help='config-file parameter set (overrides file params)')
+@click.option('-p', '--params', multiple=True,
+    help='''
+        comma-separated list of SwarmUI parameters and values as p=v
+        (overrides file params and rules)
+    ''')
 @click.option('-s', '--save-on-server', is_flag=True,
     help='''
         tell SwarmUI to save the generated images; by default,
@@ -345,8 +337,8 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server):
     """
     Generate images with common parameters and different prompts.
 
-    If an argument is a filename, read all metadata from it (accepts PNG,
-    JPG, and JSON files) and use as params for generating an image.
+    If an argument is a filename, read all metadata from it (accepts PNG
+    and JSON files) and use as params for generating an image.
 
     If one or more non-file arguments are passed, use them as separate
     prompts, and generate one image for each.
@@ -458,7 +450,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server):
 @click.argument('files', nargs=-1)
 @click.pass_context
 def params(ctx, json_output, verbose, prompt, files):
-    """dump parameters from JSON, JPG, and PNG files"""
+    """dump parameters from JSON and PNG files"""
     if verbose:
         json_output = True
     s = swarmui()
@@ -586,6 +578,7 @@ def rename(ctx, dry_run, files):
 @click.argument('files', nargs=-1)
 @click.pass_context
 # TODO: convert metadata storage from PNG to JPG and preserve
+# (this is non-trivial, because EXIF and its libraries suck)
 def jpg(ctx, dry_run, resize, files):
     """convert files to JPG, stripping metadata and optionally resizing them"""
     for file in files:

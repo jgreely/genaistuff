@@ -36,7 +36,9 @@ from datetime import datetime
 default_rules = """
 # 'rounding' field is used internally to calculate the resolutions
 # for aspect ratios (most models prefer resolutions where X and Y
-# are divisible by 64), and is not passed to SwarmUI
+# are divisible by 64), and is not passed to SwarmUI.
+# 'fix_resolution' field is used internally to round up the requested
+# resolution to /64 and then crop it after image generation.
 #
 [sdxl]
 model=sd_xl_base_1.0
@@ -56,6 +58,7 @@ rounding=64
 sampler = euler_ancestral
 scheduler = simple
 sigmashift = 3.0
+fix_resolution = true
 
 [512]
 sidelength=512
@@ -129,7 +132,7 @@ class swarmui:
             params['imageformat'] = 'PNG'
         if 'save_on_server' not in self.params:
             params['donotsave'] = True
-        for noise in ['swarm_version', 'rounding']:
+        for noise in ['swarm_version', 'rounding', 'fix_resolution']:
             if noise in params:
                 del params[noise]
         for fixup in ['loras', 'loraweights', 'loratencweights', 'lorasectionconfinement']:
@@ -414,7 +417,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
             image_params['width'] = width
             image_params['height'] = height
         s.crop = ()
-        if s.params['fix_resolution']:
+        if image_params['fix_resolution']:
             old_w = int(image_params['width'])
             old_h = int(image_params['height'])
             if old_w % 64 > 0:
@@ -627,7 +630,7 @@ def format_filename(*, pre="swarmui", set="img", seq=1,
             'hms': now.strftime('%H%M%S')
         })
     else:
-        return f"{pre}-{set}-{str(seq).zfill(pad)}.{ext}"
+        return f"{pre}-{set}-{seq}.{ext}"
 
 
 def get_aspect_pixels(ratio:str, *, side=1024, rounding=64):

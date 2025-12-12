@@ -4,12 +4,13 @@ This is a dumping ground for small genai-related scripts and data
 files.
 
 * sui.py - CLI for SwarmUI API; commands are:
-    gen - create an image based on rules, metadata, and options
-    params - extract parameters from PNG, JPG, and JSON files
-    list-rules - list canned parameter sets (built-in or ~/.sui)
-    list-models - list available base models, loras, or vae
-    rename - batch-rename image files based on --pre|set|seq options
-    jpg - batch-convert image files to JPG, optionally resizing them
+
+    - gen: create an image based on rules, metadata, and options
+    - params: extract parameters from PNG, JPG, and JSON files
+    - list-rules: list canned parameter sets (built-in or ~/.sui)
+    - list-models: list available base models, loras, or vae
+    - rename: batch-rename image files based on --pre|set|seq options
+    - jpg: batch-convert image files to JPG, optionally resizing them
 
 Note: to avoid getting into the weeds with EXIF, `PyExifTool` is used,
 which requires the [exiftool](https://exiftool.org/) binary be in your

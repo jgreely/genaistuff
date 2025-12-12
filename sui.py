@@ -12,9 +12,6 @@ TODO: more commands to implement
 
 sui [opt] list-params [search]
     list-params - valid image-gen parameters, filtered by search string
-
-Global options:
-    -o|--outformat "PNG|JPG" request specific format from server
 """
 
 import io
@@ -128,7 +125,8 @@ class swarmui:
         session:str):
         params['session_id'] = session
         params['images'] = 1
-        params['imageformat'] = 'PNG'
+        if 'imageformat' not in params:
+            params['imageformat'] = 'PNG'
         if 'save_on_server' not in self.params:
             params['donotsave'] = True
         for noise in ['swarm_version', 'rounding']:
@@ -228,6 +226,7 @@ class swarmui:
             for chunk in response.iter_content(chunk_size=16*1024):
                 img_stream.write(chunk)
         output = Image.open(img_stream)
+        exif = output.getexif()
         meta = output.info
         newmeta = PngInfo()
         if 'parameters' in meta:
@@ -235,11 +234,11 @@ class swarmui:
         if self.crop:
             output = output.crop(self.crop)
         if source:
-            exif = output.getexif()
             exif[269] = source # DocumentName
-            output.save(outputfile, exif=exif, pnginfo=newmeta)
+        if output.format == 'JPEG':
+            output.save(outputfile, exif=exif)
         else:
-            output.save(outputfile, pnginfo=newmeta)
+            output.save(outputfile, exif=exif, pnginfo=newmeta)
 
 def get_file_params(file:str, verbose=False):
     """load image params from either a JSON file or image metadata"""
@@ -300,9 +299,6 @@ def _str2array(d:dict, k:str):
         round XxY resolution up to nearest /64, then crop after generating;
         this avoids visual artifacts at image edges for certain models
     ''')
-#TODO: implement these
-#@click.option('-f', '--format', default='png',
-#    help='image format to save generated images (png|jpg, default png)')
 @click.option('-t', '--template', default='$pre-$set-$seq.$ext',
     help="""
         filename template for generated images (default "$pre-$set-$seq.$ext").
@@ -338,11 +334,13 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
         tell SwarmUI to save the generated images; by default,
         only the downloaded copy will exist.
     ''')
+@click.option('-j', '--jpeg-output', is_flag=True,
+    help='tell SwarmUI to generate JPG output instead of PNG')
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the arguments that would be used to generate images')
 @click.argument('sources', nargs=-1)
 @click.pass_context
-def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server):
+def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg_output):
     """
     Generate images with common parameters and different prompts.
 
@@ -436,9 +434,14 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server):
                     s.crop = tuple([int(mul * i) for i in s.crop])
                 image_params['width'] = new_w
                 image_params['height'] = new_h
+        if jpeg_output:
+            ext = 'jpg'
+            image_params['imageformat'] = 'JPG'
+        else:
+            ext = 'png'
         outname = format_filename(pre=s.params['pre'],
             set=s.params['set'], pad=s.params['pad'], seq=seq,
-            template=ctx.parent.params['template'])
+            template=ctx.parent.params['template'], ext=ext)
         if dry_run:
             print(f"output file: {outname}")
             print(f"session_id: {session_id}")

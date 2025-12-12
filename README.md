@@ -11,6 +11,10 @@ files.
     rename - batch-rename image files based on --pre|set|seq options
     jpg - batch-convert image files to JPG, optionally resizing them
 
+Note: to avoid getting into the weeds with EXIF, `PyExifTool` is used,
+which requires the [exiftool](https://exiftool.org/) binary be in your
+path.
+
 * dp.py - CLI wrapper to use the popular
   [dynamicprompts](https://github.com/adieyal/dynamicprompts)
   library with image-generation software that doesn't support

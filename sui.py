@@ -23,6 +23,7 @@ import sys
 import base64
 import configparser
 import json
+import exiftool
 import click
 import requests
 from requests.exceptions import HTTPError
@@ -146,30 +147,6 @@ class swarmui:
         self._download_image(imagefile, outfile, source)
         return(outfile)
 
-    def get_file_params(self, file:str, verbose=False):
-        """load image params from either a JSON file or image metadata"""
-        base, ext = os.path.splitext(file)
-        if ext.lower() == '.json':
-            with open(file, "r") as jfile:
-                return json.load(jfile)
-        elif ext.lower() in ['.png']: # TODO: *correctly* extract JPG params
-            with Image.open(file) as image:
-                metadata = image.info
-                params = dict()
-                if image.format == 'PNG':
-                    if 'parameters' in metadata:
-                        p = metadata["parameters"]
-                        if j := json.loads(p):
-                            if sui := j["sui_image_params"]:
-                                params = sui
-                            if verbose:
-                                params = j
-                else:
-                    print(f"{file}: no SwarmUI metadata found")
-            return params
-        else:
-            print(f"{file}: unknown file type")
-
     def list_rules(self):
         return self._config.sections()
 
@@ -263,6 +240,38 @@ class swarmui:
             output.save(outputfile, exif=exif, pnginfo=newmeta)
         else:
             output.save(outputfile, pnginfo=newmeta)
+
+def get_file_params(file:str, verbose=False):
+    """load image params from either a JSON file or image metadata"""
+    base, ext = os.path.splitext(file)
+    if ext.lower() == '.json':
+        with open(file, "r") as jfile:
+            return json.load(jfile)
+    elif ext.lower() in ['.png', '.jpg', '.jpeg']:
+        with Image.open(file) as image:
+            metadata = image.info
+            params = dict()
+            if image.format == 'PNG':
+                if 'parameters' in metadata:
+                    p = metadata["parameters"]
+                    if j := json.loads(p):
+                        if sui := j["sui_image_params"]:
+                            params = sui
+                        if verbose:
+                            params = j
+            elif image.format == 'JPEG':
+                metadata = exiftool.ExifToolHelper().get_metadata(file)[0]
+                if 'EXIF:UserComment' in metadata:
+                    if j := json.loads(metadata['EXIF:UserComment']):
+                        if sui := j["sui_image_params"]:
+                            params = sui
+                        if verbose:
+                            params = j
+            else:
+                print(f"{file}: no SwarmUI metadata found")
+        return params
+    else:
+        print(f"{file}: unknown file type")
 
 # swarmui request format is slightly different from returned metadata
 # (array fields: loras, loraweights, lorasectionconfinement)
@@ -360,7 +369,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server):
     seq = s.params['seq']
     for image in images:
         if os.path.isfile(image):
-            image_params = s.get_file_params(image)
+            image_params = get_file_params(image)
             # store original filename in metadata (transferred to EXIF)
             image_params['personalnote'] = os.path.basename(image)
         else:
@@ -450,13 +459,12 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server):
 @click.argument('files', nargs=-1)
 @click.pass_context
 def params(ctx, json_output, verbose, prompt, files):
-    """dump parameters from JSON and PNG files"""
+    """dump parameters from JSON, PNG, and JPG files"""
     if verbose:
         json_output = True
-    s = swarmui()
     output = list()
     for file in files:
-        params = s.get_file_params(file, verbose)
+        params = get_file_params(file, verbose)
         if params:
             if prompt:
                 print(params['prompt'])
@@ -480,9 +488,8 @@ def params(ctx, json_output, verbose, prompt, files):
 @click.pass_context
 def prompt(ctx, files):
     """shortcut for 'params -p'"""
-    s = swarmui()
     for file in files:
-        params = s.get_file_params(file)
+        params = get_file_params(file)
         if params:
             print(params['prompt'])
 
@@ -577,12 +584,11 @@ def rename(ctx, dry_run, files):
     help='percentage to resize image to (default: no change)')
 @click.argument('files', nargs=-1)
 @click.pass_context
-# TODO: convert metadata storage from PNG to JPG and preserve
-# (this is non-trivial, because EXIF and its libraries suck)
 def jpg(ctx, dry_run, resize, files):
-    """convert files to JPG, stripping metadata and optionally resizing them"""
+    """convert PNG files to JPG, preserving metadata and optionally resizing"""
     for file in files:
         if os.path.isfile(file):
+            params = get_file_params(file, True)
             with Image.open(file) as image:
                 base, ext = os.path.splitext(file)
                 outname = f"{base}.jpg"
@@ -597,6 +603,10 @@ def jpg(ctx, dry_run, resize, files):
                             quality=85, progressive=True )
                     except Exception as e:
                         print(f"convert/save '{file}' to '{outname}': {e}")
+                        sys.exit()
+                    exiftool.ExifToolHelper().set_tags(outname,
+                        {'EXIF:UserComment': json.dumps(params)},
+                        params=['-overwrite_original', '-preserve'])
 
 
 def format_filename(*, pre="swarmui", set="img", seq=1,

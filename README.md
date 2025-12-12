@@ -27,10 +27,6 @@ path.
 * waifupaper.py - MacOS wallpaper-rotation script with more
   options than the standard control-panel settings.
 
-* swarmui-png2jpg.sh - convert PNG to JPG, preserving SwarmUI metadata.
-  uses cjpeg for speed and quality, which requires first converting
-  to PPM format.
-
 * randompeople.yaml - dynamicprompts wildcards converted from a
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with

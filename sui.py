@@ -615,6 +615,19 @@ def jpg(ctx, dry_run, resize, files):
                         params=['-overwrite_original', '-preserve'])
 
 
+@cli.command()
+@click.pass_context
+def status(ctx):
+    s = swarmui(
+        host=ctx.parent.params['host'],
+        port=ctx.parent.params['port']
+    )
+    session_id = s.create_session()
+    response = s._post("/API/GetCurrentStatus",
+        params={'session_id': session_id})
+    print(json.dumps(response['status'], indent=4))
+    print(json.dumps(response['backend_status'], indent=4))
+
 def format_filename(*, pre="swarmui", set="img", seq=1,
     pad=4, ext="png", template:str):
     """return a consistently-formatted filename for a sequenced image"""

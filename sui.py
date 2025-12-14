@@ -40,6 +40,10 @@ default_rules = """
 # 'fix_resolution' field is used internally to round up the requested
 # resolution to /64 and then crop it after image generation.
 #
+#[DEFAULT]
+#host = remoteswarm.example.com
+#port = 9999
+#
 [sdxl]
 model=sd_xl_base_1.0
 cfgscale=6.5
@@ -89,9 +93,7 @@ variationseedstrength = 0.15
 
 class swarmui:
     """simple API wrapper for SwarmUI"""
-    def __init__(self, *, host = 'localhost', port = '7801'):
-        self._host = host
-        self._port = port
+    def __init__(self, *, host:str, port:str):
         self._headers = {
             'user-agent': 'sui/1.0.0',
             'Content-Type': 'application/json',
@@ -103,6 +105,18 @@ class swarmui:
             self._config.read(config_file)
         else:
             self._config.read_string(default_rules)
+        if host:
+            self._host = host
+        elif self._config.has_option('DEFAULT', 'host'):
+            self._host = self._config.get('DEFAULT', 'host')
+        else:
+            self._host = 'localhost'
+        if port:
+            self._port = port
+        elif self._config.has_option('DEFAULT', 'port'):
+            self._port = self._config.get('DEFAULT', 'port')
+        else:
+            self._port = '7801'
 
     @property
     def baseurl(self):
@@ -289,9 +303,9 @@ def _str2array(d:dict, k:str):
 
 
 @click.group()
-@click.option('-h', '--host', default='localhost',
+@click.option('-h', '--host', default='',
     help='server name or IP address')
-@click.option('-p', '--port', default='7801',
+@click.option('-p', '--port', default='',
     help='port server is listening on')
 @click.option('-a', '--aspect', type=str,
     help='aspect ratio as X:Y or as specific XxY pixel resolution')

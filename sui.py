@@ -146,7 +146,7 @@ class swarmui:
             params['imageformat'] = 'PNG'
         if 'save_on_server' not in self.params:
             params['donotsave'] = True
-        for noise in ['swarm_version', 'rounding', 'fix_resolution']:
+        for noise in ['swarm_version', 'rounding', 'fix_resolution', 'host', 'port']:
             if noise in params:
                 del params[noise]
         for fixup in ['loras', 'loraweights', 'loratencweights', 'lorasectionconfinement']:
@@ -632,6 +632,7 @@ def jpg(ctx, dry_run, resize, files):
 @cli.command()
 @click.pass_context
 def status(ctx):
+    "return server/backend status"
     s = swarmui(
         host=ctx.parent.params['host'],
         port=ctx.parent.params['port']

@@ -6,15 +6,17 @@ files.
 * sui.py - CLI for SwarmUI API; commands are:
 
     - gen: create an image based on rules, metadata, and options
+    - jpg: batch-convert image files to JPG, optionally resizing them
+    - rename: batch-rename image files based on --pre|set|seq options
     - params: extract parameters from PNG, JPG, and JSON files
+    - prompt: shortcut for `params -p`
     - list-rules: list canned parameter sets (built-in or ~/.sui)
     - list-models: list available base models, loras, or vae
-    - rename: batch-rename image files based on --pre|set|seq options
-    - jpg: batch-convert image files to JPG, optionally resizing them
+    - status: return server/backend status
 
 Note: to avoid getting into the weeds with EXIF, `PyExifTool` is used,
 which requires the [exiftool](https://exiftool.org/) binary be in your
-path.
+path. Yes, the best way to deal with EXIF in Python is a Perl script.
 
 * dp.py - CLI wrapper to use the popular
   [dynamicprompts](https://github.com/adieyal/dynamicprompts)
@@ -22,7 +24,7 @@ path.
   it directly.
 
 * aspect.py - calculate resolutions for arbitrary aspect ratios that
-  do not exceed the "standard" (squared) pixel count for a model.
+  do not exceed the "standard" pixel count (sidelength squared) for a model.
 
 * waifupaper.py - MacOS wallpaper-rotation script with more
   options than the standard control-panel settings.
@@ -30,14 +32,4 @@ path.
 * randompeople.yaml - dynamicprompts wildcards converted from a
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with
-  some typos corrected and some weights added. Use as __p/random__.
-
-## Obsolete (see sui.py)
-
-* refinewall.sh - SwarmUI CLI that re-generates an image with
-  refining and upscaling turned on (specifically for 4K wallpaper
-  from 1024x576/576x1024). -w/-t options to override the base size
-  to 1920x1080/1080x1920 and upscaling to 2x, for better results
-  from models that can handle the higher base resolution. -v
-  option to generate variations to try to eliminate defects (start
-  small, around 0.05).
+  some typos corrected and some weights added. Use as `__p/random__`.

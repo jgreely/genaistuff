@@ -18,6 +18,7 @@ import requests
 from requests.exceptions import HTTPError
 from PIL import Image
 from PIL.PngImagePlugin import PngInfo
+from PIL import ImageFilter
 import math
 import importlib.resources
 from string import Template
@@ -253,6 +254,10 @@ class swarmui:
             newmeta.add_text('parameters', meta['parameters'])
         if self.crop:
             output = output.crop(self.crop)
+        if self.unsharp_mask:
+            output = output.filter(ImageFilter.UnsharpMask(
+                radius=float(self.um_r), percent=int(self.um_p),
+                threshold=int(self.um_t)))
         if source:
             exif[269] = source # DocumentName
         if output.format == 'JPEG':
@@ -338,6 +343,8 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
 
 
 @cli.command()
+# TODO: extract the unique-substring search from LUT option and
+# use it for models & loras as well
 @click.option('-m', '--model', type=str,
     help='base model to render images with')
 @click.option('-l', '--loras', type=str, multiple=True,
@@ -354,8 +361,14 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
         tell SwarmUI to save the generated images; by default,
         only the downloaded copy will exist.
     ''')
+# TODO: replace with client-side JPG conversion, to avoid recompression
 @click.option('-j', '--jpeg-output', is_flag=True,
-    help='tell SwarmUI to generate JPG output instead of PNG')
+    help='''
+        tell SwarmUI to generate JPG output instead of PNG. Warning:
+        combining with --fix-resolution or --unsharp-mask will result
+        in re-compression artifacts; it's better to do a batch
+        conversion at the end with the jpg command.
+    ''')
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the arguments that would be used to generate images')
 @click.option('-L', '--lut-name', type=str,
@@ -366,9 +379,16 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
         adding ":0.x", as with LoRAs. Use list-luts to see what's
         available.
     ''')
+@click.option('-u', '--unsharp-mask', is_flag=True,
+    help='apply unsharp mask to image before saving')
+@click.option('-U', '--unsharp-params', default='0.65/65/5',
+    help='''
+        unsharp mask parameters as radius/percentage/threshold
+        (default "0.65/65/5").
+    ''')
 @click.argument('sources', nargs=-1)
 @click.pass_context
-def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg_output, lut_name):
+def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg_output, lut_name, unsharp_mask, unsharp_params):
     """
     Generate images with common parameters and different prompts.
 
@@ -428,6 +448,9 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
                     lora, loraweight = lora.split(':')
                 image_params['loras'].append(lora)
                 image_params['loraweights'].append(loraweight)
+        s.unsharp_mask = unsharp_mask
+        if '/' in unsharp_params:
+            s.um_r, s.um_p, s.um_t = unsharp_params.split('/')
         if lut_name:
             lut_strength = 1.0
             if ':' in lut_name:

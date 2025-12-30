@@ -349,7 +349,11 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
 @click.option('-m', '--model', type=str,
     help='base model to render images with')
 @click.option('-l', '--loras', type=str, multiple=True,
-    help='LoRA models to add (add ":0.x" to set strength < 1)')
+    help='''
+        LoRA models to add. append ":0.x" to set strength < 1; you can
+        also add a second option ":base" or ":refine" to restrict the
+        LoRA to that part of the render (e.g. "zelda:1:base").
+    ''')
 @click.option('-r', '--rules', multiple=True,
     help='config-file parameter set (overrides file params)')
 @click.option('-p', '--params', multiple=True,
@@ -446,9 +450,23 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
             for lora in loras:
                 loraweight = "1"
                 if ':' in lora:
-                    lora, loraweight = lora.split(':')
+                    lora, loraweight = lora.split(':', 1)
                 image_params['loras'].append(lora)
                 image_params['loraweights'].append(loraweight)
+            # lorasectionconfinement is only present if any lora uses it
+            # global=0, base=5, refiner=1
+            use_confine = False
+            ls_confine = list()
+            for i,loraweight in enumerate(image_params['loraweights']):
+                if ':' in loraweight:
+                    l_weight, l_section = loraweight.split(':')
+                    image_params['loraweights'][i] = l_weight
+                    ls_confine.append('5' if l_section == 'base' else '1')
+                    use_confine = True
+                else:
+                    ls_confine.append('0')
+            if use_confine:
+                image_params['lorasectionconfinement'] = ls_confine
         s.unsharp_mask = unsharp_mask
         if '/' in unsharp_params:
             s.um_r, s.um_p, s.um_t = unsharp_params.split('/')

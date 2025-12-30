@@ -20,6 +20,7 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 from PIL import ImageFilter
 import math
+import re
 import importlib.resources
 from string import Template
 from datetime import datetime
@@ -615,9 +616,15 @@ def list_models(ctx, type, verbose, search):
         if found:
             if verbose:
                 print(model['title'])
-                for key in ['name', 'architecture', 'compat_class', 'resolution']:
-                    if key in model:
-                        print("    ", model[key])
+                for key in ['name', 'architecture', 'compat_class', 'resolution', 'trigger_phrase']:
+                    if key in model and model[key]:
+                        print(f'    {key}={model[key]}')
+                if 'description' in model and model['description']:
+                    url = re.search('(https://civitai.com/[^"]+)(?:")',
+                        model['description'])
+                    if url:
+                        print(f'    url={url.group(1)}')
+                    
             else:
                 print(os.path.splitext(model['name'])[0])
 

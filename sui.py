@@ -178,10 +178,10 @@ class swarmui:
                     params[item] = set[item]
         return params
 
-    def get_models(self, *, type='Stable-Diffusion', session:str):
+    def get_models(self, *, type='Stable-Diffusion'):
         """retrieve the names of available models (base, lora, vae)"""
         params = {
-            "session_id": session,
+            "session_id": self.session_id,
             "path": "",
             "depth": 4,
             "subtype": type # Stable-Diffusion, LoRA, VAE
@@ -344,8 +344,6 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
 
 
 @cli.command()
-# TODO: extract the unique-substring search from LUT option and
-# use it for models & loras as well
 @click.option('-m', '--model', type=str,
     help='base model to render images with')
 @click.option('-l', '--loras', type=str, multiple=True,
@@ -441,7 +439,10 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
                     k, v = param.split('=')
                     image_params[k] = v
         if model:
-            image_params['model'] = model
+            model_fullname = substring_match(model,
+                    [x['name'] for x in s.get_models()],
+                    match_type='model')
+            image_params['model'] = model_fullname
         if loras:
             if 'loras' not in image_params:
                 image_params['loras'] = list()
@@ -459,7 +460,10 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
                 loraweight = "1"
                 if ':' in lora:
                     lora, loraweight = lora.split(':', 1)
-                image_params['loras'].append(lora)
+                lora_fullname = substring_match(lora,
+                    [x['name'] for x in s.get_models(type='LoRA')],
+                    match_type='LoRA')
+                image_params['loras'].append(lora_fullname)
                 image_params['loraweights'].append(loraweight)
             # lorasectionconfinement is only present if any lora uses it
             # global=0, base=5, refiner=1
@@ -487,14 +491,8 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
             lut_strength = 1.0
             if ':' in lut_name:
                 lut_name, lut_strength = lut_name.split(':')
-            match = [x for x in s.get_luts() if lut_name.casefold() in x.casefold()]
-            if len(match) > 1:
-                print(f"Error: ambiguous LUT name '{lut_name}', matches:\n  {'\n  '.join(match)}")
-                sys.exit()
-            elif len(match) == 0:
-                print(f"Error: LUT '{lut_name}' not found on server")
-                sys.exit()
-            image_params['lutname'] = match[0]
+            match = substring_match(lut_name, s.get_luts(), match_type='LUT')
+            image_params['lutname'] = match
             image_params['lutlutstrength'] = lut_strength
             image_params['lutlogspace'] = False
         if s.params['aspect']:
@@ -544,6 +542,11 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
         outname = format_filename(pre=s.params['pre'],
             set=s.params['set'], pad=s.params['pad'], seq=seq,
             template=ctx.parent.params['template'], ext=ext)
+        while os.path.isfile(outname):
+            seq += 1
+            outname = format_filename(pre=s.params['pre'],
+                set=s.params['set'], pad=s.params['pad'], seq=seq,
+                template=ctx.parent.params['template'], ext=ext)
         if dry_run:
             print(f"output file: {outname}")
             print(f"session_id: {session_id}")
@@ -637,7 +640,7 @@ def list_models(ctx, type, verbose, search):
     )
     s.params = ctx.parent.params
     session_id = s.create_session()
-    for model in s.get_models(type=subtype, session=session_id):
+    for model in s.get_models(type=subtype):
         found = True
         if search:
             found = False
@@ -752,6 +755,18 @@ def status(ctx):
         params={'session_id': session_id})
     print(json.dumps(response['status'], indent=4))
     print(json.dumps(response['backend_status'], indent=4))
+
+def substring_match(item:str, match_list:list, /, match_type='match'):
+    """
+    do a case-sensitive substring match of a list, returning a single
+    match, and exiting with an error for multiple or zero matches
+    """
+    matches = [x for x in match_list if item.casefold() in x.casefold()]
+    if len(matches) > 1:
+        raise click.UsageError(f"Error: ambiguous {match_type} '{item}', matches:\n  {'\n  '.join(matches)}")
+    elif len(matches) == 0:
+        raise click.UsageError(f"Error: {match_type} '{item}' not found on server")
+    return matches[0]
 
 def format_filename(*, pre="swarmui", set="img", seq=1,
     pad=4, ext="png", template:str):

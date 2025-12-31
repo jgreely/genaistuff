@@ -445,6 +445,14 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
         if loras:
             if 'loras' not in image_params:
                 image_params['loras'] = list()
+            new_loras = list(loras)
+            # don't add the same lora twice in re-gens!
+            for lora in loras:
+                if ':' in lora:
+                    loraname, rest = lora.split(':', 1)
+                    if loraname in image_params['loras']:
+                        new_loras.remove(lora)
+            loras = new_loras
             if 'loraweights' not in image_params:
                 image_params['loraweights'] = list()
             for lora in loras:
@@ -456,8 +464,13 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
             # lorasectionconfinement is only present if any lora uses it
             # global=0, base=5, refiner=1
             use_confine = False
-            ls_confine = list()
+            if 'lorasectionconfinement' in image_params:
+                ls_confine = list(image_params['lorasectionconfinement'])
+            else:
+                ls_confine = list()
             for i,loraweight in enumerate(image_params['loraweights']):
+                if i < len(ls_confine):
+                    continue
                 if ':' in loraweight:
                     l_weight, l_section = loraweight.split(':')
                     image_params['loraweights'][i] = l_weight

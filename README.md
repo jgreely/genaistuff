@@ -33,3 +33,20 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with
   some typos corrected and some weights added. Use as `__p/random__`.
+
+## My image-generation workflow
+
+Typically I generate a few hundred prompts with `dp.py`, feed them to
+`sui.py gen -j` on STDIN, pick the best ones with my
+[deathmatch](https://github.com/jgreely/deathmatch) script, and then
+use those files as arguments to `sui.py gen` with refining and
+upscaling parameters added.
+
+```
+dp.py __prompt/christmas__ | sui.py --pre out/zit --set xmas \
+    gen -r zit,1080p -j
+deathmatch out
+...
+sui.py --pre out/zit --set xmas4k \
+    gen -r zit,4k -j -u -L sensia out/*-{01,15,19,37,82}.jpg
+```

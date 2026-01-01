@@ -639,7 +639,7 @@ def list_models(ctx, type, verbose, search):
         port=ctx.parent.params['port']
     )
     s.params = ctx.parent.params
-    session_id = s.create_session()
+    s.session_id = s.create_session()
     for model in s.get_models(type=subtype):
         found = True
         if search:

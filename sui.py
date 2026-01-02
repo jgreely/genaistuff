@@ -115,17 +115,18 @@ class swarmui:
     @property
     def baseurl(self):
         return f"http://{self.host}:{self.port}"
-
-    def _get_host(self):
+    @property
+    def host(self):
         return self._host
-    def _set_host(self, value):
+    @host.setter
+    def host(self, value):
         self._host = value
-    host = property(_get_host, _set_host)
-    def _get_port(self):
+    @property
+    def port(self):
         return self._port
-    def _set_port(self, value):
+    @port.setter
+    def port(self, value):
         self._port = value
-    port = property(_get_port, _set_port)
 
     def create_session(self):
         response = self._post("/API/GetNewSession", params={})
@@ -172,7 +173,7 @@ class swarmui:
         params = dict()
         for set in sets:
             for item in set:
-                if set[item] == 'unset':
+                if set[item] == 'unset' and item in params:
                     del params[item]
                 else:
                     params[item] = set[item]
@@ -253,18 +254,81 @@ class swarmui:
         newmeta = PngInfo()
         if 'parameters' in meta:
             newmeta.add_text('parameters', meta['parameters'])
+        ops = dict()
+        if 'jpeg_output' in self.params and self.params['jpeg_output']:
+            ops['jpg'] = True
+        else:
+            ext = 'png'
         if self.crop:
-            output = output.crop(self.crop)
+            ops['crop'] = self.crop
         if self.unsharp_mask:
-            output = output.filter(ImageFilter.UnsharpMask(
-                radius=float(self.um_r), percent=int(self.um_p),
-                threshold=int(self.um_t)))
+            ops['unsharp'] = {'r': self.um_r, 'p': self.um_p, 't': self.um_t}
+        output = process(ops).apply(output)
         if source:
             exif[269] = source # DocumentName
         if output.format == 'JPEG':
             output.save(outputfile, exif=exif)
         else:
             output.save(outputfile, exif=exif, pnginfo=newmeta)
+
+# TODO: store key ops in 'personalnotes', so they can be used
+# in a re-gen.
+class process:
+    """
+    collect all client-side post-processing operations: crop,
+    unsharp-mask, resize, jpeg-conversion.
+    """
+    def __init__(self, ops:dict):
+        self._op = dict()
+        if ops:
+            for k in ops:
+                self._op[k] = ops[k]
+        # each op is a dict
+        # order of operations:
+        #   op=crop (result of fix_resolution; can be different for each image)
+        #   op=resize (down only!)
+        #   op=sharpen
+        #   op=jpg
+    @property
+    def op(self):
+        """list of operations to process for an image"""
+        return self._op
+    @op.setter
+    def op(self, value):
+        for k,v in value:
+            self._op[k] = v
+        return self._op
+
+    def delete(self, op):
+        if op in self._op:
+            del self._op[op]
+
+    def apply(self, image:Image):
+        """return an Image object with all operations applied in sequence"""
+        op = self.op
+        if 'crop' in op:
+            image = image.crop(op['crop'])
+        if 'size' in op:
+            size = op['size']
+            if size < 100:
+                image = image.resize((int(image.width * size/100),
+                    int(image.height * size/100)))
+        if 'sharp' in op:
+            image = image.filter(ImageFilter.UnsharpMask(
+                radius=float(op['sharp']['r']), percent=int(op['sharp']['p']),
+                threshold=int(op['sharp']['t'])))
+        if 'jpg' in op:
+            # in-memory conversion
+            f = io.BytesIO()
+            image.save(f, 'JPEG', optimize=True, quality=85,
+                progressive=True)
+            f.seek(0)
+            image = Image.open(f)
+        return image
+
+    def as_json(self):
+        return json.dumps(self.op)
+
 
 def get_file_params(file:str, verbose=False):
     """load image params from either a JSON file or image metadata"""
@@ -325,6 +389,12 @@ def _str2array(d:dict, k:str):
         round XxY resolution up to nearest /64, then crop after generating;
         this avoids visual artifacts at image edges for certain models
     ''')
+@click.option('-j', '--jpeg-output', is_flag=True,
+    help='''
+        tell SwarmUI to generate JPG output instead of PNG. This is
+        done after any other client-side modifications such as
+        --fix-resolution and --unsharp.
+    ''')
 @click.option('-t', '--template', default='$pre-$set-$seq.$ext',
     help="""
         filename template for generated images (default "$pre-$set-$seq.$ext").
@@ -339,18 +409,25 @@ def _str2array(d:dict, k:str):
 @click.option('--pad', default=4,
     help='zero-padding length for "seq" (default 4)')
 def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
-    fix_resolution):
+    fix_resolution, jpeg_output):
+    # TODO: process global options here to simplify subcommands;
+    # just put them in a convenient global dict
     pass
 
 
 @cli.command()
 @click.option('-m', '--model', type=str,
-    help='base model to render images with')
+    help='''
+        Case-insensitive unique substring of base model name to render
+        images with (use list-models to see what's available on the
+        server).
+    ''')
 @click.option('-l', '--loras', type=str, multiple=True,
     help='''
-        LoRA models to add. append ":0.x" to set strength < 1; you can
-        also add a second option ":base" or ":refine" to restrict the
-        LoRA to that part of the render (e.g. "zelda:1:base").
+        Case-insensitive unique substring of LoRA model name to enable
+        for rendering. Append ":0.x" to set strength < 1; you can also
+        add a second option ":base" or ":refine" to restrict the LoRA
+        to that part of the render (e.g. "zelda:0.8:base").
     ''')
 @click.option('-r', '--rules', multiple=True,
     help='config-file parameter set (overrides file params)')
@@ -364,26 +441,20 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
         tell SwarmUI to save the generated images; by default,
         only the downloaded copy will exist.
     ''')
-# TODO: replace with client-side JPG conversion, to avoid recompression
-@click.option('-j', '--jpeg-output', is_flag=True,
-    help='''
-        tell SwarmUI to generate JPG output instead of PNG. Warning:
-        combining with --fix-resolution or --unsharp-mask will result
-        in re-compression artifacts; it's better to do a batch
-        conversion at the end with the jpg command.
-    ''')
+# TODO: move this to cli as global
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the arguments that would be used to generate images')
 @click.option('-L', '--lut-name', type=str,
     help='''
-        unique substring identifying a LUT to apply after rendering;
-        this requires the SwarmUI PostRender extension, and some .cube
-        files in Models/lut. It can be applied at reduced strength by
-        adding ":0.x", as with LoRAs. Use list-luts to see what's
-        available.
+        Case-insensitive unique substring identifying a LUT to apply
+        after rendering; this requires the SwarmUI PostRender
+        extension and some .cube files in Models/lut. It can be
+        applied at reduced strength by adding ":0.x", as with LoRAs.
+        Use list-luts to see what's available.
     ''')
+# TODO: move these to cli as globals
 @click.option('-u', '--unsharp-mask', is_flag=True,
-    help='apply unsharp mask to image before saving')
+    help='apply unsharp mask to images before saving')
 @click.option('-U', '--unsharp-params', default='0.65/65/5',
     help='''
         unsharp mask parameters as radius/percentage/threshold
@@ -391,18 +462,22 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
     ''')
 @click.argument('sources', nargs=-1)
 @click.pass_context
-def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg_output, lut_name, unsharp_mask, unsharp_params):
+def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_name, unsharp_mask, unsharp_params):
     """
     Generate images with common parameters and different prompts.
 
-    If an argument is a filename, read all metadata from it (accepts PNG
-    and JSON files) and use as params for generating an image.
+    If an argument is a filename, read all metadata from it (accepts PNG,
+    JPG, and JSON files) and use as params for generating an image. Note
+    that SwarmUI stores metadata in the PNG-specific 'parameters' field,
+    and for JPG in the EXIF 'UserComment' field. The JSON format is
+    a single dict containing key/value pairs (the same format generated
+    by "sui params -j").
 
     If one or more non-file arguments are passed, use them as separate
-    prompts, and generate one image for each.
+    prompts, generatimg one image for each.
 
-    If no arguments are passed, read prompts from STDIN and generate
-    one image for each.
+    If no arguments are passed, read one-line prompts from STDIN and
+    generate one image for each.
     """        
 
     s = swarmui(
@@ -534,11 +609,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, jpeg
                     s.crop = tuple([int(mul * i) for i in s.crop])
                 image_params['width'] = new_w
                 image_params['height'] = new_h
-        if jpeg_output:
-            ext = 'jpg'
-            image_params['imageformat'] = 'JPG'
-        else:
-            ext = 'png'
+        ext = 'jpg' if 'jpeg_output' in s.params and s.params['jpeg_output'] else 'png'
         outname = format_filename(pre=s.params['pre'],
             set=s.params['set'], pad=s.params['pad'], seq=seq,
             template=ctx.parent.params['template'], ext=ext)
@@ -725,18 +796,18 @@ def jpg(ctx, dry_run, resize, files):
             with Image.open(file) as image:
                 base, ext = os.path.splitext(file)
                 outname = f"{base}.jpg"
+                ops = dict()
                 if resize < 100:
-                    image = image.resize((int(image.width * resize/100),
-                    int(image.height * resize/100)))
+                    ops['size'] = resize
                 if dry_run:
                     print(file, outname)
                 else:
+                    ops['jpg'] = True
+                    image = process(ops).apply(image)
                     try:
-                        image.save(outname, 'JPEG', optimize=True,
-                            quality=85, progressive=True )
+                        image.save(outname)
                     except Exception as e:
-                        print(f"convert/save '{file}' to '{outname}': {e}")
-                        sys.exit()
+                        click.FileError(f"convert/save '{file}' to '{outname}': {e}")
                     exiftool.ExifToolHelper().set_tags(outname,
                         {'EXIF:UserComment': json.dumps(params)},
                         params=['-overwrite_original', '-preserve'])
@@ -767,6 +838,7 @@ def substring_match(item:str, match_list:list, /, match_type='match'):
     elif len(matches) == 0:
         raise click.UsageError(f"Error: {match_type} '{item}' not found on server")
     return matches[0]
+
 
 def format_filename(*, pre="swarmui", set="img", seq=1,
     pad=4, ext="png", template:str):

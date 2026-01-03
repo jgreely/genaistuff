@@ -37,16 +37,16 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 ## My image-generation workflow
 
 Typically I generate a few hundred prompts with `dp.py`, feed them to
-`sui.py gen -j` on STDIN, pick the best ones with my
+`sui.py -j gen` on STDIN, pick the best ones with my
 [deathmatch](https://github.com/jgreely/deathmatch) script, and then
 use those files as arguments to `sui.py gen` with refining and
 upscaling parameters added.
 
 ```
-dp.py __prompt/christmas__ | sui.py --pre out/zit --set xmas \
-    gen -r zit,1080p -j
+dp.py __prompt/christmas__ | sui.py --pre out/zit --set xmas -j \
+    gen -r zit,1080p
 deathmatch out
 ...
-sui.py --pre out/zit --set xmas4k \
-    gen -r zit,4k -j -u -L sensia out/*-{01,15,19,37,82}.jpg
+sui.py --pre out/zit --set xmas4k -j \
+    gen -r zit,4k -u -L sensia out/*-{01,15,19,37,82}.jpg
 ```

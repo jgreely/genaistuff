@@ -171,12 +171,12 @@ class swarmui:
     def merge_params(self, sets:list):
         """merge multiple sets of parameters into one, keeping the last version of each key"""
         params = dict()
-        for set in sets:
-            for item in set:
-                if set[item] == 'unset' and item in params:
+        for s in sets:
+            for item in s:
+                if s[item] == 'unset' and item in params:
                     del params[item]
                 else:
-                    params[item] = set[item]
+                    params[item] = s[item]
         return params
 
     def get_models(self, *, type='Stable-Diffusion'):
@@ -257,6 +257,7 @@ class swarmui:
         ops = dict()
         if 'jpeg_output' in self.params and self.params['jpeg_output']:
             ops['jpg'] = True
+            ext = 'jpg'
         else:
             ext = 'png'
         if self.crop:
@@ -399,6 +400,8 @@ def _str2array(d:dict, k:str):
     help="""
         filename template for generated images (default "$pre-$set-$seq.$ext").
         The following variables are available: pre, set, seq, ext, ymd, hms.
+        A template without a $seq variable will generate a fixed filename,
+        overwriting it if it already exists.
     """)
 @click.option('--pre', default='genai',
     help='template variable "pre"')
@@ -441,7 +444,6 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
         tell SwarmUI to save the generated images; by default,
         only the downloaded copy will exist.
     ''')
-# TODO: move this to cli as global
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the arguments that would be used to generate images')
 @click.option('-L', '--lut-name', type=str,
@@ -452,7 +454,6 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
         applied at reduced strength by adding ":0.x", as with LoRAs.
         Use list-luts to see what's available.
     ''')
-# TODO: move these to cli as globals
 @click.option('-u', '--unsharp-mask', is_flag=True,
     help='apply unsharp mask to images before saving')
 @click.option('-U', '--unsharp-params', default='0.65/65/5',
@@ -609,11 +610,17 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                     s.crop = tuple([int(mul * i) for i in s.crop])
                 image_params['width'] = new_w
                 image_params['height'] = new_h
-        ext = 'jpg' if 'jpeg_output' in s.params and s.params['jpeg_output'] else 'png'
+        if 'jpeg_output' in s.params and s.params['jpeg_output']:
+            ext = 'jpg'
+        else:
+            ext = 'png'
         outname = format_filename(pre=s.params['pre'],
             set=s.params['set'], pad=s.params['pad'], seq=seq,
             template=ctx.parent.params['template'], ext=ext)
         while os.path.isfile(outname):
+            if not re.search(r'\$seq', ctx.parent.params['template']):
+                # prevent infinite loop if no $seq in template
+                break
             seq += 1
             outname = format_filename(pre=s.params['pre'],
                 set=s.params['set'], pad=s.params['pad'], seq=seq,
@@ -716,7 +723,7 @@ def list_models(ctx, type, verbose, search):
         if search:
             found = False
             for key in ['name', 'architecture', 'compat_class']:
-                if model[key] and search[0].casefold() in model[key].casefold():
+                if key in model and model[key] and search[0].casefold() in model[key].casefold():
                     found = True
         if found:
             if verbose:
@@ -757,7 +764,7 @@ def list_luts(ctx, search):
     help='just print the before/after filenames')
 @click.argument('files', nargs=-1)
 @click.pass_context
-# TODO: add format override
+# TODO: add -j support to convert all to JPEG
 def rename(ctx, dry_run, files):
     """
     rename files to use a consistent format based on --pre|set|seq;
@@ -777,7 +784,7 @@ def rename(ctx, dry_run, files):
             try:
                 os.rename(file, outname)
             except Exception as e:
-                print(f"rename '{file}' to '{outname}: {e}")
+                click.FileError(f"rename '{file}' to '{outname}': {e}")
         seq += 1
 
 
@@ -844,6 +851,8 @@ def format_filename(*, pre="swarmui", set="img", seq=1,
     pad=4, ext="png", template:str):
     """return a consistently-formatted filename for a sequenced image"""
     if template:
+        if not re.search(r'\..+$', template):
+            template += '.$ext'
         now = datetime.now()
         # TODO: add more filename-formatting variables
         return Template(template).safe_substitute({

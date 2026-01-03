@@ -258,6 +258,7 @@ class swarmui:
         if 'jpeg_output' in self.params and self.params['jpeg_output']:
             ops['jpg'] = True
             ext = 'jpg'
+            exif[37510] = meta['parameters']
         else:
             ext = 'png'
         if self.crop:
@@ -493,148 +494,149 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
     else:
         images = sys.stdin.readlines()
     seq = s.params['seq']
-    for image in images:
-        if os.path.isfile(image):
-            image_params = get_file_params(image)
-            # strip previous-gen's requests, to avoid surprises
-            for noise in ['imageformat', 'donotsave']:
-                if noise in image_params:
-                    del image_params[noise]
-            # store original filename in metadata (transferred to EXIF)
-            image_params['personalnote'] = os.path.basename(image)
-        else:
-            image_params = { "prompt": image.rstrip() }
-        if rules:
-            for rule_arg in rules:
-                for rule in rule_arg.split(','):
-                    image_params = s.merge_params([image_params,
-                        s.get_rule_params(rule)])
-        if params:
-            for param_arg in params:
-                for param in param_arg.split(','):
-                    k, v = param.split('=')
-                    image_params[k] = v
-        if model:
-            model_fullname = substring_match(model,
-                    [x['name'] for x in s.get_models()],
-                    match_type='model')
-            image_params['model'] = model_fullname
-        if loras:
-            if 'loras' not in image_params:
-                image_params['loras'] = list()
-            new_loras = list(loras)
-            # don't add the same lora twice in re-gens!
-            for lora in loras:
-                if ':' in lora:
-                    loraname, rest = lora.split(':', 1)
-                    if loraname in image_params['loras']:
-                        new_loras.remove(lora)
-            loras = new_loras
-            if 'loraweights' not in image_params:
-                image_params['loraweights'] = list()
-            for lora in loras:
-                loraweight = "1"
-                if ':' in lora:
-                    lora, loraweight = lora.split(':', 1)
-                lora_fullname = substring_match(lora,
-                    [x['name'] for x in s.get_models(type='LoRA')],
-                    match_type='LoRA')
-                image_params['loras'].append(lora_fullname)
-                image_params['loraweights'].append(loraweight)
-            # lorasectionconfinement is only present if any lora uses it
-            # global=0, base=5, refiner=1
-            use_confine = False
-            if 'lorasectionconfinement' in image_params:
-                ls_confine = list(image_params['lorasectionconfinement'])
+    outname=None
+    with click.progressbar(images, item_show_func=lambda a: outname) as bar:
+        for image in bar:
+            if os.path.isfile(image):
+                image_params = get_file_params(image)
+                # strip previous-gen's requests, to avoid surprises
+                for noise in ['imageformat', 'donotsave']:
+                    if noise in image_params:
+                        del image_params[noise]
+                # store original filename in metadata (transferred to EXIF)
+                image_params['personalnote'] = os.path.basename(image)
             else:
-                ls_confine = list()
-            for i,loraweight in enumerate(image_params['loraweights']):
-                if i < len(ls_confine):
-                    continue
-                if ':' in loraweight:
-                    l_weight, l_section = loraweight.split(':')
-                    image_params['loraweights'][i] = l_weight
-                    ls_confine.append('5' if l_section == 'base' else '1')
-                    use_confine = True
+                image_params = { "prompt": image.rstrip() }
+            if rules:
+                for rule_arg in rules:
+                    for rule in rule_arg.split(','):
+                        image_params = s.merge_params([image_params,
+                            s.get_rule_params(rule)])
+            if params:
+                for param_arg in params:
+                    for param in param_arg.split(','):
+                        k, v = param.split('=')
+                        image_params[k] = v
+            if model:
+                model_fullname = substring_match(model,
+                        [x['name'] for x in s.get_models()],
+                        match_type='model')
+                image_params['model'] = model_fullname
+            if loras:
+                if 'loras' not in image_params:
+                    image_params['loras'] = list()
+                new_loras = list(loras)
+                # don't add the same lora twice in re-gens!
+                for lora in loras:
+                    if ':' in lora:
+                        loraname, rest = lora.split(':', 1)
+                        if loraname in image_params['loras']:
+                            new_loras.remove(lora)
+                loras = new_loras
+                if 'loraweights' not in image_params:
+                    image_params['loraweights'] = list()
+                for lora in loras:
+                    loraweight = "1"
+                    if ':' in lora:
+                        lora, loraweight = lora.split(':', 1)
+                    lora_fullname = substring_match(lora,
+                        [x['name'] for x in s.get_models(type='LoRA')],
+                        match_type='LoRA')
+                    image_params['loras'].append(lora_fullname)
+                    image_params['loraweights'].append(loraweight)
+                # lorasectionconfinement is only present if any lora uses it
+                # global=0, base=5, refiner=1
+                use_confine = False
+                if 'lorasectionconfinement' in image_params:
+                    ls_confine = list(image_params['lorasectionconfinement'])
                 else:
-                    ls_confine.append('0')
-            if use_confine:
-                image_params['lorasectionconfinement'] = ls_confine
-        s.unsharp_mask = unsharp_mask
-        if '/' in unsharp_params:
-            s.um_r, s.um_p, s.um_t = unsharp_params.split('/')
-        if lut_name:
-            lut_strength = 1.0
-            if ':' in lut_name:
-                lut_name, lut_strength = lut_name.split(':')
-            match = substring_match(lut_name, s.get_luts(), match_type='LUT')
-            image_params['lutname'] = match
-            image_params['lutlutstrength'] = lut_strength
-            image_params['lutlogspace'] = False
-        if s.params['aspect']:
-            if s.params['sidelength']:
-                if '/' in s.params['sidelength']:
-                    sidelength, rounding = s.params['sidelength'].split('/')
+                    ls_confine = list()
+                for i,loraweight in enumerate(image_params['loraweights']):
+                    if i < len(ls_confine):
+                        continue
+                    if ':' in loraweight:
+                        l_weight, l_section = loraweight.split(':')
+                        image_params['loraweights'][i] = l_weight
+                        ls_confine.append('5' if l_section == 'base' else '1')
+                        use_confine = True
+                    else:
+                        ls_confine.append('0')
+                if use_confine:
+                    image_params['lorasectionconfinement'] = ls_confine
+            s.unsharp_mask = unsharp_mask
+            if '/' in unsharp_params:
+                s.um_r, s.um_p, s.um_t = unsharp_params.split('/')
+            if lut_name:
+                lut_strength = 1.0
+                if ':' in lut_name:
+                    lut_name, lut_strength = lut_name.split(':')
+                match = substring_match(lut_name, s.get_luts(), match_type='LUT')
+                image_params['lutname'] = match
+                image_params['lutlutstrength'] = lut_strength
+                image_params['lutlogspace'] = False
+            if s.params['aspect']:
+                if s.params['sidelength']:
+                    if '/' in s.params['sidelength']:
+                        sidelength, rounding = s.params['sidelength'].split('/')
+                    else:
+                        sidelength = s.params['sidelength']
+                        rounding = 64
+                    sidelength = int(sidelength)
+                elif image_params['sidelength']:
+                    sidelength = int(image_params['sidelength'])
+                    if image_params['rounding']:
+                        rounding = image_params['rounding']
+                    else:
+                        rounding = 64
+                width, height = get_aspect_pixels(s.params['aspect'],
+                    side=sidelength, rounding=int(rounding))
+                image_params['width'] = width
+                image_params['height'] = height
+            s.crop = ()
+            if 'fix_resolution' in image_params:
+                old_w = int(image_params['width'])
+                old_h = int(image_params['height'])
+                if old_w % 64 > 0:
+                    new_w = (old_w // 64 + 1) * 64
                 else:
-                    sidelength = s.params['sidelength']
-                    rounding = 64
-                sidelength = int(sidelength)
-            elif image_params['sidelength']:
-                sidelength = int(image_params['sidelength'])
-                if image_params['rounding']:
-                    rounding = image_params['rounding']
+                    new_w = old_w
+                if old_h % 64 > 0:
+                    new_h = (old_h // 64 + 1) * 64
                 else:
-                    rounding = 64
-            width, height = get_aspect_pixels(s.params['aspect'],
-                side=sidelength, rounding=int(rounding))
-            image_params['width'] = width
-            image_params['height'] = height
-        s.crop = ()
-        if 'fix_resolution' in image_params:
-            old_w = int(image_params['width'])
-            old_h = int(image_params['height'])
-            if old_w % 64 > 0:
-                new_w = (old_w // 64 + 1) * 64
+                    new_h = old_h
+                if new_w > old_w or new_h > old_h:
+                    delta_w = (new_w - old_w) // 2;
+                    delta_h = (new_h - old_h) // 2;
+                    s.crop = (delta_w, delta_h, old_w + delta_w, old_h + delta_h)
+                    if 'refinerupscale' in image_params:
+                        mul = float(image_params['refinerupscale'])
+                        s.crop = tuple([int(mul * i) for i in s.crop])
+                    image_params['width'] = new_w
+                    image_params['height'] = new_h
+            if 'jpeg_output' in s.params and s.params['jpeg_output']:
+                ext = 'jpg'
             else:
-                new_w = old_w
-            if old_h % 64 > 0:
-                new_h = (old_h // 64 + 1) * 64
-            else:
-                new_h = old_h
-            if new_w > old_w or new_h > old_h:
-                delta_w = (new_w - old_w) // 2;
-                delta_h = (new_h - old_h) // 2;
-                s.crop = (delta_w, delta_h, old_w + delta_w, old_h + delta_h)
-                if 'refinerupscale' in image_params:
-                    mul = float(image_params['refinerupscale'])
-                    s.crop = tuple([int(mul * i) for i in s.crop])
-                image_params['width'] = new_w
-                image_params['height'] = new_h
-        if 'jpeg_output' in s.params and s.params['jpeg_output']:
-            ext = 'jpg'
-        else:
-            ext = 'png'
-        outname = format_filename(pre=s.params['pre'],
-            set=s.params['set'], pad=s.params['pad'], seq=seq,
-            template=ctx.parent.params['template'], ext=ext)
-        while os.path.isfile(outname):
-            if not re.search(r'\$seq', ctx.parent.params['template']):
-                # prevent infinite loop if no $seq in template
-                break
-            seq += 1
+                ext = 'png'
             outname = format_filename(pre=s.params['pre'],
                 set=s.params['set'], pad=s.params['pad'], seq=seq,
                 template=ctx.parent.params['template'], ext=ext)
-        if dry_run:
-            print(f"output file: {outname}")
-            print(f"session_id: {session_id}")
-            print(json.dumps(image_params, indent=4))
-        else:
-            image = s.generate_image(image_params, session=session_id,
-                outfile=outname)
-            print(outname)
-        seq += 1
-    
+            while os.path.isfile(outname):
+                if not re.search(r'\$seq', ctx.parent.params['template']):
+                    # prevent infinite loop if no $seq in template
+                    break
+                seq += 1
+                outname = format_filename(pre=s.params['pre'],
+                    set=s.params['set'], pad=s.params['pad'], seq=seq,
+                    template=ctx.parent.params['template'], ext=ext)
+            if dry_run:
+                print(f"output file: {outname}")
+                print(f"session_id: {session_id}")
+                print(json.dumps(image_params, indent=4))
+            else:
+                image = s.generate_image(image_params, session=session_id,
+                    outfile=outname)
+            seq += 1
+
 @cli.command()
 @click.option('-j', '--json', 'json_output', is_flag=True,
     help='generate JSON output instead of default K=V')

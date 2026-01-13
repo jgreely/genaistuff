@@ -81,8 +81,14 @@ parser.add_argument('-t', '--tee',
 )
 parser.add_argument('-j', '--json',
     action = 'store_true',
-    help = 'convert output from a.b=foo to JSON valid for Flux2'
+    help = 'convert escaped YAML prompt output to JSON valid for Flux2'
 )
+parser.add_argument('-m', '--merge',
+    action = 'store_true',
+    help = '''
+append a line from STDIN to the end of each output line; useful
+for passing only part of a prompt through an LLM for enhancement.
+''')
 parser.add_argument('prompts',
     nargs = '*',
     help = 'Prompts to process'
@@ -120,7 +126,7 @@ elif args.everything:
             print(result)
     sys.exit()
 for prompt in args.prompts:
-    # transform JSON to pass through intact
+    # load escaped YAML into the prompt to be transformed to JSON (Flux2)
     if args.json:
         prompt = yaml.safe_load(prompt)
     try:
@@ -133,7 +139,10 @@ for prompt in args.prompts:
         if args.json:
             cleaned = json.dumps(yaml.safe_load(result.lstrip()))
         else:
+            if args.merge:
+                result = ' '.join([result, sys.stdin.readline().rstrip()])
             cleaned = multi_replace(result, [
+                ( r'^ +',         ''  ),
                 ( r' ,',         ','  ),
                 ( r',(?=[^ ])',  ', ' ),
                 ( r' +',         ' '  ),
@@ -142,6 +151,6 @@ for prompt in args.prompts:
                 ( r' *\n',       ' '  ),
                 ( r'(?<=\. )([a-z])', lambda m: m.group(1).upper())
             ])
-        print(cleaned)
+        print(cleaned, flush=True)
         if args.tee:
             print(cleaned, file=sys.stderr)

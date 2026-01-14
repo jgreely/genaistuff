@@ -492,7 +492,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
     if sources:
         images = list(sources)
     else:
-        images = sys.stdin.readlines()
+        images = sys.stdin
     seq = s.params['seq']
     outname=None
     with click.progressbar(images, item_show_func=lambda a: outname) as bar:
@@ -879,7 +879,7 @@ def get_aspect_pixels(ratio:str, *, side=1024, rounding=64):
         a_w = 1.0
         a_h = 1.0
     else:
-        a_w, a_h = [int(x) for x in ratio.split(':')]
+        a_w, a_h = [float(x) for x in ratio.split(':')]
     scale = math.sqrt(side * side / (a_w * a_h))
     ideal_w = a_w * scale
     ideal_h = a_h * scale

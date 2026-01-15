@@ -462,9 +462,11 @@ def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
         unsharp mask parameters as radius/percentage/threshold
         (default "0.65/65/5").
     ''')
+@click.option('-c', '--count-stdin', default=1,
+    help='number of incoming lines on STDIN; used only by the progress bar.')
 @click.argument('sources', nargs=-1)
 @click.pass_context
-def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_name, unsharp_mask, unsharp_params):
+def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_name, unsharp_mask, unsharp_params, count_stdin):
     """
     Generate images with common parameters and different prompts.
 
@@ -495,7 +497,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
         images = sys.stdin
     seq = s.params['seq']
     outname=None
-    with click.progressbar(images, item_show_func=lambda a: outname) as bar:
+    with click.progressbar(images, length=count_stdin, item_show_func=lambda a: outname) as bar:
         for image in bar:
             if os.path.isfile(image):
                 image_params = get_file_params(image)

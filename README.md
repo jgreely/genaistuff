@@ -50,3 +50,16 @@ deathmatch out
 sui.py --pre out/zit --set xmas4k -j \
     gen -r zit,4k -u -L sensia out/*-{01,15,19,37,82}.jpg
 ```
+
+The most recent workflow change is integrating an LLM to enhance part
+of the prompt to improve variety (prompt script not yet checked in),
+and then append it to a separate dynamic prompt that didn't get
+"enhanced" (because most LLMS have odd ideas on how to "enhance"
+people for diversity):
+
+```
+# "-c" is passed to sui.py solely for the progressbar
+dp.py -c 100 __location__ | prompt.py |
+    dp.py --merge -c 100 __subject__ |
+    sui.py --pre zit --set withllm gen -c 100 -r zit,1080p
+```

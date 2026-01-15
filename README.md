@@ -23,6 +23,16 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
   library with image-generation software that doesn't support
   it directly.
 
+* prompt.py - pass each line from STDIN to an [LM Studio](https://lmstudio.ai)
+  server, with the system prompt set for prompt enhancement. Server url,
+  model, and default system prompt can be set in `~/.pyprompt`
+  If the strings `@<` and `>@` are detected in a prompt, pass *only*
+  the section between them to the LLM, keeping the rest intact.
+    - `-l`: list available models on the server
+    - `-m`: use a specific model
+    - `-t`: set model temperature
+    - sysprompt: search `~/.pyprompt` for an alternative system prompt
+
 * aspect.py - calculate resolutions for arbitrary aspect ratios that
   do not exceed the "standard" pixel count (sidelength squared) for a model.
 

@@ -196,7 +196,7 @@ chat.add_system_prompt(system_prompt)
 for prompt in sys.stdin:
     tmpchat = chat.copy() # fresh context every time
 
-    # if "@<" and "@>" are present, pass just the text between those
+    # if "@<" and ">@" are present, pass just the text between those
     # markers to the LLM, and reassemble the results.
     fixed_prefix = ''
     fixed_suffix = ''

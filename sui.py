@@ -317,21 +317,17 @@ class process:
         """return an Image object with all operations applied in sequence"""
         op = self.op
         if 'meta' in op:
-            print('meta')
             image_meta = op['meta']
         else:
             image_meta = None
         if 'crop' in op:
-            print('crop')
             image = image.crop(op['crop'])
         if 'size' in op:
-            print('size')
             size = op['size']
             if size < 100:
                 image = image.resize((int(image.width * size/100),
                     int(image.height * size/100)))
         if 'sharp' in op:
-            print('sharp')
             image = image.filter(ImageFilter.UnsharpMask(
                 radius=float(op['sharp']['r']), percent=int(op['sharp']['p']),
                 threshold=int(op['sharp']['t'])))
@@ -339,7 +335,6 @@ class process:
             jpg_quality = 85
             if type(op['jpg']) is int and op['jpg'] < 100 and op['jpg'] > 0:
                 jpg_quality = op['jpg']
-            print('jpg', jpg_quality)
             # in-memory conversion
             f = io.BytesIO()
             image.save(f, 'JPEG', optimize=True, quality=jpg_quality,
@@ -347,12 +342,10 @@ class process:
             f.seek(0)
             image = Image.open(f)
         if 'save' in op:
-            print('save')
             exif = image.getexif()
             if 'source' in op:
                 exif[269] = op['source']
             if image.format == 'JPEG':
-                print('save jpg', op['save'])
                 try:
                     image.save(op['save'], exif=exif)
                 except Exception as e:

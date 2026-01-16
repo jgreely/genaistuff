@@ -25,6 +25,15 @@ import importlib.resources
 from string import Template
 from datetime import datetime
 
+invalid_params = [
+    'swarm_version',
+    'rounding',
+    'fix_resolution',
+    'host',
+    'port',
+    'donotsave'
+]
+
 # canned sets of parameters; override by creating ~/.sui
 # 
 default_rules = """
@@ -142,7 +151,7 @@ class swarmui:
         if 'save_on_server' not in self.params:
             params['donotsave'] = True
         # strip invalid params that generate warnings in logfiles
-        for noise in ['swarm_version', 'rounding', 'fix_resolution', 'host', 'port']:
+        for noise in invalid_params:
             if noise in params:
                 del params[noise]
         for fixup in ['loras', 'loraweights', 'loratencweights', 'lorasectionconfinement']:
@@ -249,29 +258,24 @@ class swarmui:
             for chunk in response.iter_content(chunk_size=16*1024):
                 img_stream.write(chunk)
         output = Image.open(img_stream)
-        exif = output.getexif()
-        meta = output.info
-        newmeta = PngInfo()
-        if 'parameters' in meta:
-            newmeta.add_text('parameters', meta['parameters'])
+
         ops = dict()
+        meta = output.info
+        if 'parameters' in meta:
+            ops['meta'] = meta['parameters']
         if 'jpeg_output' in self.params and self.params['jpeg_output']:
-            ops['jpg'] = True
-            ext = 'jpg'
-            exif[37510] = meta['parameters']
-        else:
-            ext = 'png'
+            if 'jpeg_quality' in self.params:
+                ops['jpg'] = self.params['jpeg_output']
+            else:
+                ops['jpg'] = True
         if self.crop:
             ops['crop'] = self.crop
         if self.unsharp_mask:
             ops['unsharp'] = {'r': self.um_r, 'p': self.um_p, 't': self.um_t}
-        output = process(ops).apply(output)
+        ops['save'] = outputfile
         if source:
-            exif[269] = source # DocumentName
-        if output.format == 'JPEG':
-            output.save(outputfile, exif=exif)
-        else:
-            output.save(outputfile, exif=exif, pnginfo=newmeta)
+            ops['source'] = source # DocumentName
+        process(ops).apply(output)
 
 # TODO: store key ops in 'personalnotes', so they can be used
 # in a re-gen.
@@ -287,10 +291,14 @@ class process:
                 self._op[k] = ops[k]
         # each op is a dict
         # order of operations:
-        #   op=crop (result of fix_resolution; can be different for each image)
-        #   op=resize (down only!)
-        #   op=sharpen
-        #   op=jpg
+        #   op=meta (val=metadata_dict; used by save op)
+        #   op=crop (val=bbox; used by fix_resolution, can be different
+        #           for each image)
+        #   op=size (val=percentage (<100))
+        #   op=sharp (val={'r': radius, 'p': percent, 't': threshold})
+        #   op=jpg (val=quality (<100))
+        #   op=source (val=original image being re-genned)
+        #   op=save (val=filename)
     @property
     def op(self):
         """list of operations to process for an image"""
@@ -308,24 +316,57 @@ class process:
     def apply(self, image:Image):
         """return an Image object with all operations applied in sequence"""
         op = self.op
+        if 'meta' in op:
+            print('meta')
+            image_meta = op['meta']
+        else:
+            image_meta = None
         if 'crop' in op:
+            print('crop')
             image = image.crop(op['crop'])
         if 'size' in op:
+            print('size')
             size = op['size']
             if size < 100:
                 image = image.resize((int(image.width * size/100),
                     int(image.height * size/100)))
         if 'sharp' in op:
+            print('sharp')
             image = image.filter(ImageFilter.UnsharpMask(
                 radius=float(op['sharp']['r']), percent=int(op['sharp']['p']),
                 threshold=int(op['sharp']['t'])))
         if 'jpg' in op:
+            jpg_quality = 85
+            if type(op['jpg']) is int and op['jpg'] < 100 and op['jpg'] > 0:
+                jpg_quality = op['jpg']
+            print('jpg', jpg_quality)
             # in-memory conversion
             f = io.BytesIO()
-            image.save(f, 'JPEG', optimize=True, quality=85,
+            image.save(f, 'JPEG', optimize=True, quality=jpg_quality,
                 progressive=True)
             f.seek(0)
             image = Image.open(f)
+        if 'save' in op:
+            print('save')
+            exif = image.getexif()
+            if 'source' in op:
+                exif[269] = op['source']
+            if image.format == 'JPEG':
+                print('save jpg', op['save'])
+                try:
+                    image.save(op['save'], exif=exif)
+                except Exception as e:
+                    click.FileError(f"{op['save']}: {e}")
+                exiftool.ExifToolHelper().set_tags(op['save'],
+                    {'EXIF:UserComment': json.dumps(json.loads(image_meta))},
+                    params=['-overwrite_original', '-preserve'])
+            else:
+                png_meta = PngInfo()
+                png_meta.add_text('parameters', image_meta)
+                try:
+                    image.save(op['save'], exif=exif, pnginfo=png_meta)
+                except Exception as e:
+                    click.FileError(f"{op['save']}: {e}")
         return image
 
     def as_json(self):
@@ -397,6 +438,8 @@ def _str2array(d:dict, k:str):
         done after any other client-side modifications such as
         --fix-resolution and --unsharp.
     ''')
+@click.option('-J', '--jpeg-quality', type=int,
+    help='JPEG conversion quality (default 85)')
 @click.option('-t', '--template', default='$pre-$set-$seq.$ext',
     help="""
         filename template for generated images (default "$pre-$set-$seq.$ext").
@@ -413,7 +456,7 @@ def _str2array(d:dict, k:str):
 @click.option('--pad', default=4,
     help='zero-padding length for "seq" (default 4)')
 def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
-    fix_resolution, jpeg_output):
+    fix_resolution, jpeg_output, jpeg_quality):
     # TODO: process global options here to simplify subcommands;
     # just put them in a convenient global dict
     pass
@@ -803,7 +846,7 @@ def jpg(ctx, dry_run, resize, files):
     """convert PNG files to JPG, preserving metadata and optionally resizing"""
     for file in files:
         if os.path.isfile(file):
-            params = get_file_params(file, True)
+            params = json.dumps(get_file_params(file, True))
             with Image.open(file) as image:
                 base, ext = os.path.splitext(file)
                 outname = f"{base}.jpg"
@@ -813,15 +856,10 @@ def jpg(ctx, dry_run, resize, files):
                 if dry_run:
                     print(file, outname)
                 else:
+                    ops['meta'] = params
                     ops['jpg'] = True
-                    image = process(ops).apply(image)
-                    try:
-                        image.save(outname)
-                    except Exception as e:
-                        click.FileError(f"convert/save '{file}' to '{outname}': {e}")
-                    exiftool.ExifToolHelper().set_tags(outname,
-                        {'EXIF:UserComment': json.dumps(params)},
-                        params=['-overwrite_original', '-preserve'])
+                    ops['save'] = outname
+                    process(ops).apply(image)
 
 
 @cli.command()

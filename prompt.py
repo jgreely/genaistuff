@@ -120,6 +120,10 @@ parser = argparse.ArgumentParser(
         will be interpreted as names for alternative system prompts.
     """
 )
+parser.add_argument('-s', '--show-prompts',
+    action='store_true',
+    help='list system prompts available in ~/.pyprompt'
+)
 parser.add_argument('-l', '--list',
     action='store_true',
     help = 'list available models on the server.'
@@ -154,7 +158,7 @@ parser.add_argument('sysprompt',
 )
 args=parser.parse_args()
 
-config = configparser.RawConfigParser()
+config = configparser.RawConfigParser(default_section=None)
 config.read_string(default_system_prompt)
 config_file = os.path.join(os.path.expanduser("~"), ".pyprompt")
 if os.path.isfile(config_file):
@@ -170,7 +174,13 @@ if args.model:
 else:
     model_id = config.get('DEFAULT', 'model', fallback='openai/gpt-oss-20b')
 
-if (args.list):
+if args.show_prompts:
+    for sysprompt in config.options('DEFAULT'):
+        if sysprompt not in ['prompt', 'url', 'model']:
+            print(sysprompt)
+    sys.exit()
+
+if args.list:
     llm_only = lms.list_downloaded_models("llm")
     for model in llm_only:
         print(model.model_key)

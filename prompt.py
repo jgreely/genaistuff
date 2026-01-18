@@ -109,6 +109,22 @@ def multi_replace(text, replacements):
         text = re.sub(pattern, replacement, text, flags = re.DOTALL)
     return text
 
+def partial_enhance(m):
+    oneoffchat = tmpchat.copy()
+    fixed_prefix = m.group(1)
+    llm_prompt = m.group(2)
+    fixed_suffix = m.group(3)
+    oneoffchat.add_user_message(llm_prompt)
+    prediction = model.respond(oneoffchat)
+    response = prediction.content
+    response = multi_replace(response, [
+        ( r'^.*</seed:think>', '' ), # seed-oss-style
+        ( r'^.*</think>', '' ),
+        ( r'^.*<.message.>', '' )
+    ])
+    return ' '.join([fixed_prefix, response, fixed_suffix])
+
+
 parser = argparse.ArgumentParser(
     prog='prompt',
     formatter_class = argparse.RawDescriptionHelpFormatter,
@@ -210,20 +226,19 @@ for prompt in sys.stdin:
     # markers to the LLM, and reassemble the results.
     fixed_prefix = ''
     fixed_suffix = ''
-    if match := re.match(r'^(.*) *@< *([^>]+) *>@ *(.*)$', prompt):
-        fixed_prefix = match.group(1)
-        prompt = match.group(2)
-        fixed_suffix = match.group(3)
-    tmpchat.add_user_message(prompt)
-    prediction = model.respond(tmpchat)
-    response = prediction.content
-    response = multi_replace(response, [
-        ( r'^.*</seed:think>', '' ), # seed-oss-style
-        ( r'^.*</think>', '' ),
-        ( r'^.*<.message.>', '' )
-    ])
-    if match:
-        response = ' '.join([fixed_prefix, response, fixed_suffix])
+    if '@<' in prompt:
+        response = re.sub(r'( *)@< *([^>]+) *>@( *)', 
+            partial_enhance,
+            prompt)
+    else:
+        tmpchat.add_user_message(prompt)
+        prediction = model.respond(tmpchat)
+        response = prediction.content
+        response = multi_replace(response, [
+            ( r'^.*</seed:think>', '' ), # seed-oss-style
+            ( r'^.*</think>', '' ),
+            ( r'^.*<.message.>', '' )
+        ])
     response = multi_replace(response, [
         ( r'\n', ' ' ),
         ( r'^ +', '' ),

@@ -30,8 +30,7 @@ invalid_params = [
     'rounding',
     'fix_resolution',
     'host',
-    'port',
-    'donotsave'
+    'port'
 ]
 
 # canned sets of parameters; override by creating ~/.sui

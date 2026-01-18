@@ -210,23 +210,27 @@ for prompt in sys.stdin:
     # markers to the LLM, and reassemble the results.
     fixed_prefix = ''
     fixed_suffix = ''
-    if match := re.match(r'^(.*) *@< *(.+) *>@ *(.*)$', prompt):
+    if match := re.match(r'^(.*) *@< *([^>]+) *>@ *(.*)$', prompt):
         fixed_prefix = match.group(1)
         prompt = match.group(2)
         fixed_suffix = match.group(3)
     tmpchat.add_user_message(prompt)
     prediction = model.respond(tmpchat)
-    # strip out headers and make it a single line
-    prediction = multi_replace(prediction.content, [
-        ( r'^.*</seed:think>', ''), # seed-oss-style
+    response = prediction.content
+    response = multi_replace(response, [
+        ( r'^.*</seed:think>', '' ), # seed-oss-style
         ( r'^.*</think>', '' ),
-        ( r'^.*<.message.>', '' ),
-        ( r'\n', ' '  ),
-        ( r' +', ' '  )
+        ( r'^.*<.message.>', '' )
     ])
     if match:
-        prediction = ' '.join([fixed_prefix, prediction, fixed_suffix])
+        response = ' '.join([fixed_prefix, response, fixed_suffix])
+    response = multi_replace(response, [
+        ( r'\n', ' ' ),
+        ( r'^ +', '' ),
+        ( r' +$', '' ),
+        ( r' +', ' ' )
+    ])
     try:
-        print(prediction, flush=True)
+        print(response, flush=True)
     except:
         sys.exit()

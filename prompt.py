@@ -109,20 +109,35 @@ def multi_replace(text, replacements):
         text = re.sub(pattern, replacement, text, flags = re.DOTALL)
     return text
 
+# expects a match to the regexp r'( *)@<(?:([_A-Za-z0-9]+):)? *([^>]+) *>@( *)'
+#   @< prompt >@
+#   @<label: prompt >@
+#   1 - prefix whitespace
+#   2 - optional sysprompt label followed by ':'
+#   3 - prompt
+#   4 - suffix whitespace
 def partial_enhance(m):
-    oneoffchat = tmpchat.copy()
-    fixed_prefix = m.group(1)
-    llm_prompt = m.group(2)
-    fixed_suffix = m.group(3)
-    oneoffchat.add_user_message(llm_prompt)
-    prediction = model.respond(oneoffchat)
+    chat = lms.Chat()
+    prefix = m.group(1)
+    sysprompt = m.group(2) if m.group(2) else ''
+    prompt = m.group(3)
+    suffix = m.group(4)
+    if sysprompt and config.has_option('DEFAULT', sysprompt):
+        chat.add_system_prompt(config.get('DEFAULT', sysprompt))
+    elif sysprompt:
+        print(f"system prompt '{sysprompt}' not found in ~/.pyprompt")
+        sys.exit()
+    else:
+        chat.add_system_prompt(system_prompt)
+    chat.add_user_message(prompt)
+    prediction = model.respond(chat)
     response = prediction.content
     response = multi_replace(response, [
         ( r'^.*</seed:think>', '' ), # seed-oss-style
         ( r'^.*</think>', '' ),
         ( r'^.*<.message.>', '' )
     ])
-    return ' '.join([fixed_prefix, response, fixed_suffix])
+    return f'{prefix}{response}{suffix}'
 
 
 parser = argparse.ArgumentParser(
@@ -216,23 +231,21 @@ if args.sysprompt:
         print(f"system prompt '{prompt_key}' not found in ~/.pyprompt")
         sys.exit()
 
-chat = lms.Chat()
-chat.add_system_prompt(system_prompt)
-
 for prompt in sys.stdin:
-    tmpchat = chat.copy() # fresh context every time
-
     # if "@<" and ">@" are present, pass just the text between those
     # markers to the LLM, and reassemble the results.
     fixed_prefix = ''
     fixed_suffix = ''
     if '@<' in prompt:
-        response = re.sub(r'( *)@< *([^>]+) *>@( *)', 
+        response = re.sub(r'( *)@<(?:([_A-Za-z0-9]+):)? *([^>]+) *>@( *)',
             partial_enhance,
             prompt)
     else:
-        tmpchat.add_user_message(prompt)
-        prediction = model.respond(tmpchat)
+        # fresh chat each time, to prevent context cruft
+        chat = lms.Chat()
+        chat.add_system_prompt(system_prompt)
+        chat.add_user_message(prompt)
+        prediction = model.respond(chat)
         response = prediction.content
         response = multi_replace(response, [
             ( r'^.*</seed:think>', '' ), # seed-oss-style

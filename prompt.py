@@ -132,11 +132,12 @@ def partial_enhance(m):
     chat.add_user_message(prompt)
     prediction = model.respond(chat)
     response = prediction.content
-    response = multi_replace(response, [
-        ( r'^.*</seed:think>', '' ), # seed-oss-style
-        ( r'^.*</think>', '' ),
-        ( r'^.*<.message.>', '' )
-    ])
+    if not args.debug:
+        response = multi_replace(response, [
+            ( r'^.*</seed:think>', '' ), # seed-oss-style
+            ( r'^.*</think>', '' ),
+            ( r'^.*<.message.>', '' )
+        ])
     return f'{prefix}{response}{suffix}'
 
 
@@ -182,6 +183,10 @@ parser.add_argument('-T', '--tokens',
     type = int,
     default = 1000,
     help = 'maximum number of tokens to return from one request (default=1000).'
+)
+parser.add_argument('-d', '--debug',
+    action='store_true',
+    help='print raw response from LLM, to catch formatting errors and refusals'
 )
 parser.add_argument('sysprompt',
     nargs = '*',
@@ -247,17 +252,19 @@ for prompt in sys.stdin:
         chat.add_user_message(prompt)
         prediction = model.respond(chat)
         response = prediction.content
+        if not args.debug:
+            response = multi_replace(response, [
+                ( r'^.*</seed:think>', '' ), # seed-oss-style
+                ( r'^.*</think>', '' ),
+                ( r'^.*<.message.>', '' )
+            ])
+    if not args.debug:
         response = multi_replace(response, [
-            ( r'^.*</seed:think>', '' ), # seed-oss-style
-            ( r'^.*</think>', '' ),
-            ( r'^.*<.message.>', '' )
+            ( r'\n', ' ' ),
+            ( r'^ +', '' ),
+            ( r' +$', '' ),
+            ( r' +', ' ' )
         ])
-    response = multi_replace(response, [
-        ( r'\n', ' ' ),
-        ( r'^ +', '' ),
-        ( r' +$', '' ),
-        ( r' +', ' ' )
-    ])
     try:
         print(response, flush=True)
     except:

@@ -203,7 +203,7 @@ system_prompt = config.get('DEFAULT', 'prompt')
 
 SERVER_API_HOST = config.get('DEFAULT', 'url', fallback='localhost:1234')
 lms.configure_default_client(SERVER_API_HOST)
-lms.set_sync_api_timeout(None)
+lms.set_sync_api_timeout(60)
 
 if args.model:
     model_id = args.model

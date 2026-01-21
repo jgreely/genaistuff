@@ -528,6 +528,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
     s.session_id = session_id
     if sources:
         images = list(sources)
+        count_stdin = length(images)
     else:
         images = sys.stdin
     seq = s.params['seq']

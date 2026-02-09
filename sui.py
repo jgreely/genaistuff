@@ -631,6 +631,8 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                 image_params['width'] = width
                 image_params['height'] = height
             s.crop = ()
+            if 'fix_resolution' in s.params:
+                image_params['fix_resolution'] = s.params['fix_resolution']
             if 'fix_resolution' in image_params:
                 old_w = int(image_params['width'])
                 old_h = int(image_params['height'])

@@ -14,6 +14,14 @@ import configparser
 
 import lmstudio as lms
 
+# if '@<' and '>@' are found in the string, pass only the string
+# between them to the LLM. If '@<' is followed by a string terminating
+# in a ':', use that LLM sysprompt instead of the global one.
+# Multiple '@<foo: ...>@' expressions can appear in a prompt, but cannot
+# overlap.
+#
+partial_enhancement_regexp = r'( *)@<(?:([_A-Za-z0-9]+):)? *([^>]+) *>@( *)'
+
 default_system_prompt="""
 [DEFAULT]
 # modified from Qwen Image's default enhancement prompt
@@ -48,7 +56,7 @@ prompt =
     6. Treat each Prompt independently, and do not incorporate any context
     from previous requests.
     
-    7. Do not include any printed text, labels, signs, or captions in the
+    7. Do not add any printed text, labels, signs, or captions to the
     Rewritten Prompt unless they were quoted in the original Prompt.
     
     8. Do not label the Rewritten Prompt as a rewritten or enhanced prompt.
@@ -132,7 +140,10 @@ def partial_enhance(m):
     chat.add_user_message(prompt)
     prediction = model.respond(chat)
     response = prediction.content
-    if not args.debug:
+    if args.debug:
+        print(f'DEBUG: |{sysprompt}|{prefix}|{response}|{suffix}|',
+            file=sys.stderr)
+    else:
         response = multi_replace(response, [
             ( r'^.*</seed:think>', '' ), # seed-oss-style
             ( r'^.*</think>', '' ),
@@ -237,12 +248,10 @@ if args.sysprompt:
         sys.exit()
 
 for prompt in sys.stdin:
-    # if "@<" and ">@" are present, pass just the text between those
-    # markers to the LLM, and reassemble the results.
     fixed_prefix = ''
     fixed_suffix = ''
-    if '@<' in prompt:
-        response = re.sub(r'( *)@<(?:([_A-Za-z0-9]+):)? *([^>]+) *>@( *)',
+    if '@<' in prompt and '>@' in prompt:
+        response = re.sub(partial_enhancement_regexp,
             partial_enhance,
             prompt)
     else:
@@ -252,7 +261,10 @@ for prompt in sys.stdin:
         chat.add_user_message(prompt)
         prediction = model.respond(chat)
         response = prediction.content
-        if not args.debug:
+        if args.debug:
+            print(f'DEBUG: |{system_prompt}|{response}|',
+                file=sys.stderr)
+        else:
             response = multi_replace(response, [
                 ( r'^.*</seed:think>', '' ), # seed-oss-style
                 ( r'^.*</think>', '' ),

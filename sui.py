@@ -30,7 +30,14 @@ invalid_params = [
     'rounding',
     'fix_resolution',
     'host',
+    'proto',
     'port'
+]
+array_params = [
+    'loras',
+    'loraweights',
+    'loratencweights',
+    'lorasectionconfinement'
 ]
 
 # canned sets of parameters; override by creating ~/.sui
@@ -95,7 +102,7 @@ variationseedstrength = 0.15
 
 class swarmui:
     """simple API wrapper for SwarmUI"""
-    def __init__(self, *, host:str, port:str):
+    def __init__(self, *, host:str, port:str, proto:str):
         self._headers = {
             'user-agent': 'sui/1.0.0',
             'Content-Type': 'application/json',
@@ -119,10 +126,16 @@ class swarmui:
             self._port = self._config.get('DEFAULT', 'port')
         else:
             self._port = '7801'
+        if proto:
+            self._proto = proto
+        elif self._config.has_option('DEFAULT', 'proto'):
+            self._proto = self._config.get('DEFAULT', proto)
+        else:
+            self._proto = 'http'
 
     @property
     def baseurl(self):
-        return f"http://{self.host}:{self.port}"
+        return f"{self.proto}://{self.host}:{self.port}"
     @property
     def host(self):
         return self._host
@@ -135,6 +148,12 @@ class swarmui:
     @port.setter
     def port(self, value):
         self._port = value
+    @property
+    def proto(self):
+        return self._proto
+    @port.setter
+    def proto(self, value):
+        self._proto = value
 
     def create_session(self):
         response = self._post("/API/GetNewSession", params={})
@@ -153,7 +172,7 @@ class swarmui:
         for noise in invalid_params:
             if noise in params:
                 del params[noise]
-        for fixup in ['loras', 'loraweights', 'loratencweights', 'lorasectionconfinement']:
+        for fixup in array_params:
             if fixup in params:
                 _array2str(params, fixup)
         response = self._post("/API/GenerateText2Image", params=params,
@@ -398,7 +417,6 @@ def get_file_params(file:str, verbose=False):
         print(f"{file}: unknown file type")
 
 # swarmui request format is slightly different from returned metadata
-# (array fields: loras, loraweights, lorasectionconfinement)
 # 
 def _array2str(d:dict, k:str):
     """convert d[k] from list to comma-separated string"""

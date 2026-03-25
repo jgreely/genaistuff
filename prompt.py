@@ -195,6 +195,9 @@ parser.add_argument('-T', '--tokens',
     default = 1000,
     help = 'maximum number of tokens to return from one request (default=1000).'
 )
+parser.add_argument('-u', '--url',
+    type= str,
+    help='URL of LM Studio server')
 parser.add_argument('-d', '--debug',
     action='store_true',
     help='print raw response from LLM, to catch formatting errors and refusals'
@@ -213,6 +216,8 @@ if os.path.isfile(config_file):
 system_prompt = config.get('DEFAULT', 'prompt')
 
 SERVER_API_HOST = config.get('DEFAULT', 'url', fallback='localhost:1234')
+if args.url:
+    SERVER_API_HOST = args.url
 lms.configure_default_client(SERVER_API_HOST)
 lms.set_sync_api_timeout(60)
 
@@ -275,6 +280,7 @@ for prompt in sys.stdin:
             ( r'\n', ' ' ),
             ( r'^ +', '' ),
             ( r' +$', '' ),
+            ( r'’+', '’' ),
             ( r' +', ' ' )
         ])
     try:

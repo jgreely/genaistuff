@@ -340,11 +340,23 @@ class process:
             image_meta = None
         if 'crop' in op:
             image = image.crop(op['crop'])
+        if 'longside' in op:
+            if image.width > image.height:
+                scale = op['longside'] / image.width
+            else:
+                scale = op['longside'] / image.height
+            op['size'] = 100 * scale
+        if 'shortside' in op:
+            if image.width < image.height:
+                scale = op['shortside'] / image.width
+            else:
+                scale = op['shortside'] / image.height
+            op['size'] = 100 * scale
         if 'size' in op:
             size = op['size']
             if size < 100:
-                image = image.resize((int(image.width * size/100),
-                    int(image.height * size/100)))
+                image = image.resize((round(image.width * size/100),
+                    round(image.height * size/100)))
         if 'sharp' in op:
             image = image.filter(ImageFilter.UnsharpMask(
                 radius=float(op['sharp']['r']), percent=int(op['sharp']['p']),
@@ -871,6 +883,41 @@ def jpg(ctx, dry_run, resize, files):
                 else:
                     ops['meta'] = params
                     ops['jpg'] = True
+                    ops['save'] = outname
+                    process(ops).apply(image)
+
+
+# TODO: add options for scale-long-side-to-N and scale-short-side-to-N
+@cli.command()
+@click.option('-n', '--dry-run', is_flag=True,
+    help='just print the before/after filenames')
+@click.option('-r', '--resize', default=50,
+    help='percentage to resize image to (default: 50%)')
+@click.option('-s', '--shortside', type=int,
+    help='scale short side of image to argument (default: no change)')
+@click.option('-l', '--longside', type=int,
+    help='scale long side of image to argument (default: no change)')
+@click.argument('files', nargs=-1)
+@click.pass_context
+def resize(ctx, dry_run, resize, longside, shortside, files):
+    """resize PNG files (default 50%), preserving metadata"""
+    for file in files:
+        if os.path.isfile(file):
+            params = json.dumps(get_file_params(file, True))
+            with Image.open(file) as image:
+                base, ext = os.path.splitext(file)
+                outname = f"{base}-small.png"
+                ops = dict()
+                if resize < 100:
+                    ops['size'] = resize
+                if longside and longside > 0:
+                    ops['longside'] = longside
+                elif shortside and shortside > 0:
+                    ops['shortside'] = shortside
+                if dry_run:
+                    print(file, outname)
+                else:
+                    ops['meta'] = params
                     ops['save'] = outname
                     process(ops).apply(image)
 

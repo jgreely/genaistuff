@@ -102,7 +102,7 @@ variationseedstrength = 0.15
 
 class swarmui:
     """simple API wrapper for SwarmUI"""
-    def __init__(self, *, host:str, port:str, proto:str):
+    def __init__(self, *, proto = '', host = '', port = ''):
         self._headers = {
             'user-agent': 'sui/1.0.0',
             'Content-Type': 'application/json',
@@ -114,6 +114,12 @@ class swarmui:
             self._config.read(config_file)
         else:
             self._config.read_string(default_rules)
+        if proto:
+            self._proto = proto
+        elif self._config.has_option('DEFAULT', 'proto'):
+            self._proto = self._config.get('DEFAULT', proto)
+        else:
+            self._proto = 'http'
         if host:
             self._host = host
         elif self._config.has_option('DEFAULT', 'host'):
@@ -126,16 +132,16 @@ class swarmui:
             self._port = self._config.get('DEFAULT', 'port')
         else:
             self._port = '7801'
-        if proto:
-            self._proto = proto
-        elif self._config.has_option('DEFAULT', 'proto'):
-            self._proto = self._config.get('DEFAULT', proto)
-        else:
-            self._proto = 'http'
 
     @property
     def baseurl(self):
         return f"{self.proto}://{self.host}:{self.port}"
+    @property
+    def proto(self):
+        return self._proto
+    @proto.setter
+    def proto(self, value):
+        self._proto = value
     @property
     def host(self):
         return self._host
@@ -148,12 +154,6 @@ class swarmui:
     @port.setter
     def port(self, value):
         self._port = value
-    @property
-    def proto(self):
-        return self._proto
-    @port.setter
-    def proto(self, value):
-        self._proto = value
 
     def create_session(self):
         response = self._post("/API/GetNewSession", params={})
@@ -441,6 +441,8 @@ def _str2array(d:dict, k:str):
 
 
 @click.group()
+@click.option('-P', '--proto', default='http',
+    help='protocol (http/https)')
 @click.option('-h', '--host', default='',
     help='server name or IP address')
 @click.option('-p', '--port', default='',
@@ -477,7 +479,7 @@ def _str2array(d:dict, k:str):
     help='template variable "seq" initial value (auto-increments)')
 @click.option('--pad', default=4,
     help='zero-padding length for "seq" (default 4)')
-def cli(host, port, aspect, sidelength, pre, set, seq, pad, template,
+def cli(proto, host, port, aspect, sidelength, pre, set, seq, pad, template,
     fix_resolution, jpeg_output, jpeg_quality):
     # TODO: process global options here to simplify subcommands;
     # just put them in a convenient global dict
@@ -550,6 +552,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
     """        
 
     s = swarmui(
+        proto=ctx.parent.params['proto'],
         host=ctx.parent.params['host'],
         port=ctx.parent.params['port']
     )
@@ -785,6 +788,7 @@ def list_models(ctx, type, verbose, search):
         case 'vae':
             subtype = 'VAE'
     s = swarmui(
+        proto=ctx.parent.params['proto'],
         host=ctx.parent.params['host'],
         port=ctx.parent.params['port']
     )
@@ -818,6 +822,7 @@ def list_models(ctx, type, verbose, search):
 def list_luts(ctx, search):
     """print list of available LUTs"""
     s = swarmui(
+        proto=ctx.parent.params['proto'],
         host=ctx.parent.params['host'],
         port=ctx.parent.params['port']
     )
@@ -927,6 +932,7 @@ def resize(ctx, dry_run, resize, longside, shortside, files):
 def status(ctx):
     "return server/backend status"
     s = swarmui(
+        proto=ctx.parent.params['proto'],
         host=ctx.parent.params['host'],
         port=ctx.parent.params['port']
     )

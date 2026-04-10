@@ -141,7 +141,7 @@ def partial_enhance(m):
     prediction = model.respond(chat)
     response = prediction.content
     if args.debug:
-        print(f'DEBUG: |{sysprompt}|{prefix}|{response}|{suffix}|',
+        print(f'DEBUG-partial: |{sysprompt}|{prefix}|{response}|{suffix}|',
             file=sys.stderr)
     else:
         response = multi_replace(response, [
@@ -204,7 +204,14 @@ parser.add_argument('-d', '--debug',
 )
 parser.add_argument('sysprompt',
     nargs = '*',
-    help='optional system-prompt key in ~/.pyprompt'
+    help='''
+        optional system-prompt keys in ~/.pyprompt, to be applied
+        globally in order; the first argument, if present, will be
+        applied to any sub-expressions that do not specify their
+        own sysprompt. To use the built-in default sysprompt when
+        additional arguments are present, use 'default' as the
+        argument
+    '''
 )
 args=parser.parse_args()
 
@@ -213,7 +220,8 @@ config.read_string(default_system_prompt)
 config_file = os.path.join(os.path.expanduser("~"), ".pyprompt")
 if os.path.isfile(config_file):
     config.read(config_file)
-system_prompt = config.get('DEFAULT', 'prompt')
+system_prompts = list()
+system_prompts.append(config.get('DEFAULT', 'prompt'))
 
 SERVER_API_HOST = config.get('DEFAULT', 'url', fallback='localhost:1234')
 if args.url:
@@ -245,36 +253,39 @@ model = lms.llm(model_id, config = {
 })
 
 if args.sysprompt:
-    prompt_key = args.sysprompt[0]
-    if config.has_option('DEFAULT', prompt_key):
-        system_prompt = config.get('DEFAULT', prompt_key)
-    else:
-        print(f"system prompt '{prompt_key}' not found in ~/.pyprompt")
-        sys.exit()
+    system_prompts = list() # override default
+    for prompt_key in args.sysprompt:
+        if prompt_key in ['default', '-', '.']:
+            system_prompts.append(config.get('DEFAULT', 'prompt'))
+        elif config.has_option('DEFAULT', prompt_key):
+            system_prompts.append(config.get('DEFAULT', prompt_key))
+        else:
+            print(f"system prompt '{prompt_key}' not found in ~/.pyprompt")
+            sys.exit()
 
 for prompt in sys.stdin:
-    fixed_prefix = ''
-    fixed_suffix = ''
-    if '@<' in prompt and '>@' in prompt:
-        response = re.sub(partial_enhancement_regexp,
-            partial_enhance,
-            prompt)
-    else:
-        # fresh chat each time, to prevent context cruft
-        chat = lms.Chat()
-        chat.add_system_prompt(system_prompt)
-        chat.add_user_message(prompt)
-        prediction = model.respond(chat)
-        response = prediction.content
-        if args.debug:
-            print(f'DEBUG: |{system_prompt}|{response}|',
-                file=sys.stderr)
+    for system_prompt in system_prompts:
+        if '@<' in prompt and '>@' in prompt:
+            response = re.sub(partial_enhancement_regexp,
+                partial_enhance,
+                prompt)
         else:
-            response = multi_replace(response, [
-                ( r'^.*</seed:think>', '' ), # seed-oss-style
-                ( r'^.*</think>', '' ),
-                ( r'^.*<.message.>', '' )
-            ])
+            # fresh chat each time, to prevent context cruft
+            chat = lms.Chat()
+            chat.add_system_prompt(system_prompt)
+            chat.add_user_message(prompt)
+            prediction = model.respond(chat)
+            response = prediction.content
+            if args.debug:
+                print(f'DEBUG: |{system_prompt}|{response}|',
+                    file=sys.stderr)
+            else:
+                response = multi_replace(response, [
+                    ( r'^.*</seed:think>', '' ), # seed-oss-style
+                    ( r'^.*</think>', '' ),
+                    ( r'^.*<.message.>', '' )
+                ])
+        prompt = response
     if not args.debug:
         response = multi_replace(response, [
             ( r'\n', ' ' ),

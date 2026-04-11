@@ -227,7 +227,7 @@ SERVER_API_HOST = config.get('DEFAULT', 'url', fallback='localhost:1234')
 if args.url:
     SERVER_API_HOST = args.url
 lms.configure_default_client(SERVER_API_HOST)
-lms.set_sync_api_timeout(60)
+lms.set_sync_api_timeout(120)
 
 if args.model:
     model_id = args.model

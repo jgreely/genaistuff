@@ -449,7 +449,7 @@ def _str2array(d:dict, k:str):
     help='port server is listening on')
 @click.option('-a', '--aspect', type=str,
     help='aspect ratio as X:Y or as specific XxY pixel resolution')
-@click.option('-s', '--sidelength', default='1024/64',
+@click.option('-s', '--sidelength', type=str,
     help='model sidelength as pixels/divisor (default 1024/64)')
 @click.option('-f', '--fix-resolution', is_flag=True,
     help='''
@@ -645,20 +645,22 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                 image_params['lutname'] = match
                 image_params['lutlutstrength'] = lut_strength
                 image_params['lutlogspace'] = False
-            if s.params['aspect']:
-                if s.params['sidelength']:
+            if 'sidelength' in image_params:
+                sidelength = int(image_params['sidelength'])
+            else:
+                sidelength = 1024
+            if 'rounding' in image_params:
+                rounding = image_params['rounding']
+            else:
+                rounding = 64
+            if 'aspect' in s.params:
+                if 'sidelength' in s.params and s.params['sidelength'] is not None:
                     if '/' in s.params['sidelength']:
                         sidelength, rounding = s.params['sidelength'].split('/')
                     else:
                         sidelength = s.params['sidelength']
                         rounding = 64
                     sidelength = int(sidelength)
-                elif image_params['sidelength']:
-                    sidelength = int(image_params['sidelength'])
-                    if image_params['rounding']:
-                        rounding = image_params['rounding']
-                    else:
-                        rounding = 64
                 width, height = get_aspect_pixels(s.params['aspect'],
                     side=sidelength, rounding=int(rounding))
                 image_params['width'] = width

@@ -106,9 +106,9 @@ variationseedstrength = 0.15
 import asyncio
 import websockets
 from websockets.asyncio.client import connect
-async def ws_gen(params:dict):
+async def ws_gen(baseurl, params:dict, outfile):
     progress = list()
-    async with connect('ws://reimi.dotclue.org:7801/API/GenerateText2ImageWS',
+    async with connect(f"{baseurl}/API/GenerateText2ImageWS",
         close_timeout = 1600.0, max_size = None) as ws:
         await ws.send(json.dumps(params))
         while True:
@@ -132,13 +132,15 @@ async def ws_gen(params:dict):
                         draw = ImageDraw.Draw(frame)
                         frame_num += 1
                         draw.rectangle([0,0,32,32], fill='black')
-                        draw.text([5,5], f'{frame_num}', font_size=12, fill='white')
+                        draw.text([5,5], f'{frame_num}', font_size=14, fill='white')
                         frames.append(frame)
                     if len(frames) > 0:
-                        frames[0].save('output.webp',
+                        base, ext = os.path.splitext(outfile)
+                        webpfile = f"{base}.webp"
+                        frames[0].save(webpfile,
                             save_all=True,
                             append_images=frames[1:],
-                            duration=1200,
+                            duration=1000,
                             method=6,
                             loop=1
                         )
@@ -228,7 +230,10 @@ class swarmui:
             if fixup in params:
                 _array2str(params, fixup)
 
-        response = asyncio.run(ws_gen(params))
+        tmp_proto = self.proto;
+        self.proto = 'ws'
+        response = asyncio.run(ws_gen(self.baseurl, params, outfile))
+        self.proto = tmp_proto
         imagefile = response['images'][0]
         if 'personalnote' in params:
             source = params['personalnote']

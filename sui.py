@@ -653,7 +653,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                 rounding = image_params['rounding']
             else:
                 rounding = 64
-            if 'aspect' in s.params:
+            if 'aspect' in s.params and s.params['aspect'] is not None:
                 if 'sidelength' in s.params and s.params['sidelength'] is not None:
                     if '/' in s.params['sidelength']:
                         sidelength, rounding = s.params['sidelength'].split('/')

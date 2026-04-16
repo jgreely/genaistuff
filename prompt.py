@@ -289,6 +289,7 @@ for prompt in sys.stdin:
     if not args.debug:
         response = multi_replace(response, [
             ( r'\n', ' ' ),
+            ( r'^.*<channel.>', ''), # gemma-4, need to make it one-line first
             ( r'^ +', '' ),
             ( r' +$', '' ),
             ( r'’+', '’' ),

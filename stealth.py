@@ -1,13 +1,10 @@
 #!/usr/bin/env python
 """
-
 Quick standalone hack to extract SwarmUI stealth metadata from the low
 bit in WEBP/PNG images, where it is stored in the alpha channel if
 present, or else the RGB channels. RGB is annoying to extract because
 it only works for *lossless* WEBP, and it's a continuous bitstream of
 3 bits per pixel, so it's a separate function to keep things clean.
-
-Note: encoding should be identical in PNG, but I haven't tested it.
 """
 
 import sys

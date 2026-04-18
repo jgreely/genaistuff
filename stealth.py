@@ -86,8 +86,19 @@ def stealth_bytes(image, start, count):
 
 def stealth_metadata(file):
     """
-    If the file is a WEBP/PNG image with an alpha channel, attempt to
-    extract SwarmUI stealth metadata from it.
+    Check the low bits of a WEBP/PNG image to see if it contains
+    a JSON metadata structure:
+        00-07   "stealth_"
+        08-0A   "png" or "rgb" (stored in alpha channel or RGB)
+        0B-0E   "comp" or "info" (gzipped or raw)
+        0F      (unused)
+        10-13   32-bit big-endian integer length of data, in bits
+        14-??   data bytes
+    If the image has an alpha channel, the low bits of pixels (0,0)
+    through (0,7) contain the first byte; otherwise, the low bits
+    of each of the RGB channels in pixels (0,0) through (0,2) contain
+    the first byte (RGBRGBRG) as well as the high bit of the second
+    byte.
     """
     try:
         im = Image.open(file)

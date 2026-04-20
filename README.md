@@ -19,7 +19,7 @@ which requires the [exiftool](https://exiftool.org/) binary be in your
 path. Yes, the best way to deal with EXIF in Python is a Perl script.
 
 * sui-ws.py - experimental version of sui.py using the websocket
-  API to generate images and store the pre-step preview images as
+  API to generate images and store the per-step preview images as
   an animated WEBP.
 
 * stealth.py - quick hack to read SwarmUI "stealth" metadata from

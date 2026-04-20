@@ -18,6 +18,13 @@ Note: to avoid getting into the weeds with EXIF, `PyExifTool` is used,
 which requires the [exiftool](https://exiftool.org/) binary be in your
 path. Yes, the best way to deal with EXIF in Python is a Perl script.
 
+* sui-ws.py - experimental version of sui.py using the websocket
+  API to generate images and store the pre-step preview images as
+  an animated WEBP.
+
+* stealth.py - quick hack to read SwarmUI "stealth" metadata from
+  WEBP and PNG images.
+
 * dp.py - CLI wrapper to use the popular
   [dynamicprompts](https://github.com/adieyal/dynamicprompts)
   library with image-generation software that doesn't support
@@ -32,6 +39,10 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
     - `-m`: use a specific model
     - `-t`: set model temperature
     - sysprompt: search `~/.pyprompt` for an alternative system prompt
+
+* pyshed.py - efficiently emulate the behavior of `shuf|head` for very
+  large text files, quickly retrieving N random lines.
+    - `-c`: number of random lines to extract (default 10)
 
 * aspect.py - calculate resolutions for arbitrary aspect ratios that
   do not exceed the "standard" pixel count (sidelength squared) for a model.

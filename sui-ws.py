@@ -723,7 +723,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                 image_params['width'] = width
                 image_params['height'] = height
             s.crop = None
-            if 'fix_resolution' in s.params:
+            if 'fix_resolution' in s.params and s.params['fix_resolution']:
                 image_params['fix_resolution'] = s.params['fix_resolution']
             if 'fix_resolution' in image_params:
                 old_w = int(image_params['width'])
@@ -742,6 +742,9 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                     s.crop = (delta_w, delta_h, old_w + delta_w, old_h + delta_h)
                     if 'refinerupscale' in image_params:
                         mul = float(image_params['refinerupscale'])
+                        s.crop = tuple([int(mul * i) for i in s.crop])
+                    elif 'seedvrupscaleby' in image_params:
+                        mul = float(image_params['seedvrupscaleby'])
                         s.crop = tuple([int(mul * i) for i in s.crop])
                     image_params['width'] = new_w
                     image_params['height'] = new_h

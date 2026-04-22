@@ -235,10 +235,13 @@ class swarmui:
         response = asyncio.run(ws_gen(self.baseurl, params, outfile))
         self.proto = tmp_proto
         imagefile = response['images'][0]
+        source = ""
         if 'personalnote' in params:
-            source = params['personalnote']
-        else:
-            source = ""
+            notes = params['personalnote'].split(';')
+            for note in notes:
+                key, val = note.split(':')
+                if key == 'source':
+                    source = val
         self._download_image(imagefile, outfile, source)
         return(outfile)
 
@@ -352,8 +355,6 @@ class swarmui:
             ops['source'] = source # DocumentName
         process(ops).apply(output)
 
-# TODO: store key ops in 'personalnotes', so they can be used
-# in a re-gen.
 class process:
     """
     collect all client-side post-processing operations: crop,
@@ -366,13 +367,15 @@ class process:
                 self._op[k] = ops[k]
         # each op is a dict
         # order of operations:
-        #   op=meta (val=metadata_dict; used by save op)
         #   op=crop (val=bbox; used by fix_resolution, can be different
         #           for each image)
+        #   op=longside (val=resize long side of image to)
+        #   op=shortside (val=resize short side of image to)
         #   op=size (val=percentage (<100))
         #   op=sharp (val={'r': radius, 'p': percent, 't': threshold})
         #   op=jpg (val=quality (<100))
         #   op=source (val=original image being re-genned)
+        #   op=meta (val=metadata_dict; used by save op)
         #   op=save (val=filename)
     @property
     def op(self):
@@ -625,6 +628,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
     outname=None
     with click.progressbar(images, length=count_stdin, item_show_func=lambda a: outname) as bar:
         for image in bar:
+            notes = list()
             if os.path.isfile(image):
                 image_params = get_file_params(image)
                 # strip previous-gen's requests, to avoid surprises
@@ -632,10 +636,11 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                     if noise in image_params:
                         del image_params[noise]
                 # store original filename in metadata (transferred to EXIF)
-                image_params['personalnote'] = os.path.basename(image)
+                notes.append(f"source:{os.path.basename(image)}")
             else:
                 image_params = { "prompt": image.rstrip() }
             if rules:
+                notes.append(f"rules:{','.join(rules)}")
                 for rule_arg in rules:
                     for rule in rule_arg.split(','):
                         image_params = s.merge_params([image_params,
@@ -694,6 +699,8 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
             s.unsharp_mask = unsharp_mask
             if '/' in unsharp_params:
                 s.um_r, s.um_p, s.um_t = unsharp_params.split('/')
+            if unsharp_mask:
+                notes.append(f"sharp:{','.join((s.um_r,s.um_p,s.um_t))}")
             if lut_name:
                 lut_strength = 1.0
                 if ':' in lut_name:
@@ -726,6 +733,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
             if 'fix_resolution' in s.params and s.params['fix_resolution']:
                 image_params['fix_resolution'] = s.params['fix_resolution']
             if 'fix_resolution' in image_params:
+                notes.append('fixres:true')
                 old_w = int(image_params['width'])
                 old_h = int(image_params['height'])
                 if old_w % 64 > 0:
@@ -740,6 +748,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                     delta_w = (new_w - old_w) // 2;
                     delta_h = (new_h - old_h) // 2;
                     s.crop = (delta_w, delta_h, old_w + delta_w, old_h + delta_h)
+                    notes.append(f"crop:{','.join([str(x) for x in s.crop])}")
                     if 'refinerupscale' in image_params:
                         mul = float(image_params['refinerupscale'])
                         s.crop = tuple([int(mul * i) for i in s.crop])
@@ -749,6 +758,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                     image_params['width'] = new_w
                     image_params['height'] = new_h
             if 'jpeg_output' in s.params and s.params['jpeg_output']:
+                notes.append('jpg:true')
                 ext = 'jpg'
             else:
                 ext = 'png'
@@ -763,6 +773,7 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                 outname = format_filename(pre=s.params['pre'],
                     set=s.params['set'], pad=s.params['pad'], seq=seq,
                     template=ctx.parent.params['template'], ext=ext)
+            image_params['personalnote'] = ';'.join(notes)
             if dry_run:
                 print(f"output file: {outname}")
                 print(f"session_id: {session_id}")
@@ -954,7 +965,6 @@ def jpg(ctx, dry_run, resize, files):
                     process(ops).apply(image)
 
 
-# TODO: add options for scale-long-side-to-N and scale-short-side-to-N
 @cli.command()
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the before/after filenames')

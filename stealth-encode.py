@@ -7,9 +7,11 @@ it only works for *lossless* WEBP, and it's a continuous bitstream of
 3 bits per pixel, so it's a separate function to keep things clean.
 """
 
+import os
 import sys
 from PIL import Image
 import gzip
+import json
 
 def stealth_bytes_alpha(image, start=0, count=1):
     """
@@ -91,8 +93,9 @@ def stealth_metadata(file):
         00-07   "stealth_"
         08-0A   "png" or "rgb" (stored in alpha channel or RGB)
         0B-0E   "comp" or "info" (gzipped or raw)
-        0F-12   32-bit big-endian integer length of data, IN BITS
-        13-??   data bytes
+        0F      (unused)
+        10-13   32-bit big-endian integer length of data, in bits
+        14-??   data bytes
     If the image has an alpha channel, the low bits of pixels (0,0)
     through (0,7) contain the first byte; otherwise, the low bits
     of each of the RGB channels in pixels (0,0) through (0,2) contain
@@ -118,10 +121,42 @@ def stealth_metadata(file):
             return params
     return None
 
+def add_stealth_metadata(file, meta):
+    try:
+        im = Image.open(file).convert('RGBA')
+    except Exception as e:
+        print(e)
+        sys.exit()
+
+    base, ext = os.path.splitext(file)
+    outfile = f"{base}.webp"
+    if file == outfile:
+        outfile = f"{base}-converted.webp"
+    payload = gzip.compress(bytes(meta, encoding='utf-8'))
+    paylen = int.to_bytes(len(payload) * 8, length=4, byteorder='big', signed=False)
+    magic = bytes('stealth_pngcomp', encoding='utf-8')
+    data = magic + paylen + payload
+    alphabits = [255 - (1 - ((byte >> i) & 1)) for byte in data for i in range(7, -1, -1)]
+
+    offset = 0
+    for x in range(im.width):
+        for y in range(im.height):
+            r,g,b,a = im.getpixel((x,y))
+            if offset < len(alphabits):
+                im.putpixel((x,y), (r, g, b, alphabits[offset]))
+                offset += 1
+            else:
+                break
+        if offset >= len(alphabits):
+            break
+    im.save(outfile, 'WEBP', quality=80, method=6)
+
 sys.argv.pop(0)
 if len(sys.argv) > 0:
-    params = stealth_metadata(sys.argv[0])
-    if params:
-        print(params)
+    # quick hack to extract existing standard metadata
+    import subprocess
+    result = subprocess.run(['sui', 'params', '-v', sys.argv[0]], capture_output=True, text=True)
+    params = result.stdout
+    add_stealth_metadata(sys.argv[0], params)
 else:
-    print('Usage: stealth.py sui-image.webp')
+    print('Usage: stealth-encode.py sui-image.png')

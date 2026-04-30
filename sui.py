@@ -427,7 +427,7 @@ class swarmui:
         meta = output.info
         if 'parameters' in meta:
             ops['meta'] = meta['parameters']
-        if 'webp_output' in self.params:
+        if 'webp_output' in self.params and self.params['webp_output']:
             ops['webp'] = True
         elif 'jpeg_output' in self.params and self.params['jpeg_output']:
             if 'jpeg_quality' in self.params:

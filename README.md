@@ -22,9 +22,6 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
   API to generate images and store the per-step preview images as
   an animated WEBP.
 
-* stealth.py - quick hack to read SwarmUI "stealth" metadata from
-  WEBP and PNG images.
-
 * dp.py - CLI wrapper to use the popular
   [dynamicprompts](https://github.com/adieyal/dynamicprompts)
   library with image-generation software that doesn't support
@@ -84,3 +81,12 @@ dp.py -c 100 __location__ | prompt.py |
     dp.py --merge -c 100 __subject__ |
     sui.py --pre zit --set withllm gen -c 100 -r zit,1080p
 ```
+
+## Deprecated
+
+* stealth.py - quick hack to read SwarmUI "stealth" metadata from
+  WEBP and PNG images. I'm only leaving this around because I linked
+  to it elsewhere; the tested read/write code has been rolled into
+  sui.py
+
+

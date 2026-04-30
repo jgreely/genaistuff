@@ -13,6 +13,7 @@ import re
 import configparser
 
 import lmstudio as lms
+import secrets
 
 # if '@<' and '>@' are found in the string, pass only the string
 # between them to the LLM. If '@<' is followed by a string terminating
@@ -138,6 +139,9 @@ def partial_enhance(m):
     else:
         chat.add_system_prompt(system_prompt)
     chat.add_user_message(prompt)
+    # DEBUG:
+    # explicit random seed for debugging an llmster issue
+    # prediction = model.respond(chat, config={"seed": secrets.randbits(64)})
     prediction = model.respond(chat)
     response = prediction.content
     if args.debug:
@@ -293,6 +297,7 @@ for prompt in sys.stdin:
             ( r'^ +', '' ),
             ( r' +$', '' ),
             ( r'’+', '’' ),
+            ( r'\.+', '.'),
             ( r' +', ' ' )
         ])
     try:

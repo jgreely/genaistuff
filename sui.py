@@ -587,8 +587,8 @@ def get_file_params(file:str, verbose=False):
                         params = sui
                     if verbose:
                         params = j
-                else:
-                    print(f"{file}: no SwarmUI metadata found")
+            else:
+                print(f"{file}: no SwarmUI metadata found")
         return params
     else:
         print(f"{file}: unknown file type")

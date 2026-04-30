@@ -15,6 +15,7 @@ import sys
 import base64
 import configparser
 import json
+import gzip
 import exiftool
 import click
 import requests
@@ -102,6 +103,148 @@ refinerdotiling = true
 variationseed = -1
 variationseedstrength = 0.15
 """
+
+class stealth:
+    """
+    Parse SwarmUI stealth metadata from PNG/WEBP files in either RGB
+    or alpha channels, and write it out as WEBP+alpha (the only sensible
+    combination).
+    """
+
+    @staticmethod
+    def _decode_alpha(image, start=0, count=1):
+        """
+        Convert the low bit of each pixel in the alpha channel into bytes,
+        where pixel (x,y) through (x,y+7) contain the bits in order, high
+        to low.
+        """
+        start *= 8
+        count *= 8
+        lowbits = list()
+        h = image.height
+        x = start // h
+        y = start % h
+        while len(lowbits) < count:
+            a = image.getpixel((x, y))[3]
+            lowbits.append(a&1)
+            y += 1
+            if y == h:
+                y = 0
+                x += 1
+        buf = bytearray()
+        for i in range(0, len(lowbits), 8):
+            b = 0
+            for j in range(8):
+                if i + j < len(lowbits):
+                    b |= lowbits[i + j] << (7 - j)
+            buf.append(b)
+        return buf
+
+    @staticmethod
+    def _decode_rgb(image, start=0, count=1):
+        """
+        Convert the low bit of each channel in each pixel into bytes,
+        where pixel (x,y) through (x,y+2) contain the bits in order, high
+        to low, with one leftover to start the next byte. Because this
+        is a pain in the ass to decode at arbitrary offsets, it's easier
+        to just start from 0 each time and discard the unused bytes.
+        """
+        count *= 8
+        lowbits = list()
+        h = image.height
+        x = 0
+        y = 0
+        while len(lowbits) < start * 8 + count:
+            r,g,b = image.getpixel((x, y))
+            lowbits.append(r&1)
+            lowbits.append(g&1)
+            lowbits.append(b&1)
+            y += 1
+            if y == h:
+                y = 0
+                x += 1
+        buf = bytearray()
+        # discard leftover bits
+        while len(lowbits) % 8:
+            lowbits.pop()
+        for i in range(0, len(lowbits), 8):
+            b = 0
+            for j in range(8):
+                if i + j < len(lowbits):
+                    b |= lowbits[i + j] << (7 - j)
+            buf.append(b)
+        if start > 0:
+            return buf[start:]
+        return buf
+
+
+    @staticmethod
+    def _decode(image, start=0, count=1):
+        if image.mode == 'RGBA':
+            return stealth._decode_alpha(image, start, count)
+        else:
+            return stealth._decode_rgb(image, start, count)
+
+
+    @staticmethod
+    def load(file):
+        """
+        Check the low bits of a WEBP/PNG image to see if it contains
+        a JSON metadata structure:
+            00-07   "stealth_"
+            08-0A   "png" or "rgb" (stored in alpha channel or RGB)
+            0B-0E   "comp" or "info" (gzipped or raw)
+            0F-12   32-bit big-endian integer length of data, IN BITS
+            13-??   data bytes
+        If the image has an alpha channel, the low bits of pixels (0,0)
+        through (0,7) contain the first byte; otherwise, the low bits
+        of each of the RGB channels in pixels (0,0) through (0,2) contain
+        the first byte (RGBRGBRG) as well as the high bit of the second
+        byte.
+        """
+        try:
+            im = Image.open(file)
+        except Exception as e:
+            print(e)
+            sys.exit()
+        if im.format in ['WEBP', 'PNG']:
+            magic = stealth._decode(im, 0, 11).decode(errors='ignore')
+            if magic in ['stealth_png', 'stealth_rgb']:
+                is_comp = stealth._decode(im, 11, 4).decode(errors='ignore')
+                data_len = 0
+                for b in stealth._decode(im, 15, 4):
+                    data_len = data_len * 256 + b
+                data = stealth._decode(im, 19, data_len//8)
+                if is_comp == 'comp':
+                    data = gzip.decompress(data)
+                params = data.decode(errors='ignore')
+                return params
+        return None
+
+    @staticmethod
+    def save(image, outfile, meta):
+        im = image.convert('RGBA')
+        payload = gzip.compress(bytes(meta, encoding='utf-8'))
+        paylen = int.to_bytes(len(payload) * 8, length=4, byteorder='big',
+            signed=False)
+        magic = bytes('stealth_pngcomp', encoding='utf-8')
+        data = magic + paylen + payload
+        # TODO: decleverize this
+        alphabits = [255 - (1 - ((byte >> i) & 1)) for byte in data for i in range(7, -1, -1)]
+
+        offset = 0
+        for x in range(im.width):
+            for y in range(im.height):
+                r,g,b,a = im.getpixel((x,y))
+                if offset < len(alphabits):
+                    im.putpixel((x,y), (r, g, b, alphabits[offset]))
+                    offset += 1
+                else:
+                    break
+            if offset >= len(alphabits):
+                break
+        im.save(outfile, 'WEBP', quality=80, method=6)
+
 
 import asyncio
 import websockets
@@ -341,7 +484,9 @@ class swarmui:
         meta = output.info
         if 'parameters' in meta:
             ops['meta'] = meta['parameters']
-        if 'jpeg_output' in self.params and self.params['jpeg_output']:
+        if 'webp_output' in self.params:
+            ops['webp'] = True
+        elif 'jpeg_output' in self.params and self.params['jpeg_output']:
             if 'jpeg_quality' in self.params:
                 ops['jpg'] = self.params['jpeg_output']
             else:
@@ -355,10 +500,12 @@ class swarmui:
             ops['source'] = source # DocumentName
         process(ops).apply(output)
 
+
 class process:
     """
     collect all client-side post-processing operations: crop,
-    unsharp-mask, resize, jpeg-conversion.
+    unsharp-mask, resize, jpeg&webp conversion, unsharp masking,
+    and metadata storage (including stealth metadata).
     """
     def __init__(self, ops:dict):
         self._op = dict()
@@ -374,6 +521,8 @@ class process:
         #   op=size (val=percentage (<100))
         #   op=sharp (val={'r': radius, 'p': percent, 't': threshold})
         #   op=jpg (val=quality (<100))
+        #   op=webp (val=true/false; save as webp with meta in alpha channel)
+        #       webp overrides jpg
         #   op=source (val=original image being re-genned)
         #   op=meta (val=metadata_dict; used by save op)
         #   op=save (val=filename)
@@ -421,7 +570,12 @@ class process:
             image = image.filter(ImageFilter.UnsharpMask(
                 radius=float(op['sharp']['r']), percent=int(op['sharp']['p']),
                 threshold=int(op['sharp']['t'])))
-        if 'jpg' in op:
+        # TODO: collapse these two into 'save' so it picks up the exif
+        # data and saves only once
+        if 'webp' in op:
+            stealth.save(image, op['save'], image_meta)
+            del op['save']
+        elif 'jpg' in op:
             jpg_quality = 85
             if type(op['jpg']) is int and op['jpg'] < 100 and op['jpg'] > 0:
                 jpg_quality = op['jpg']
@@ -443,7 +597,7 @@ class process:
                 exiftool.ExifToolHelper().set_tags(op['save'],
                     {'EXIF:UserComment': json.dumps(json.loads(image_meta))},
                     params=['-overwrite_original', '-preserve'])
-            else:
+            elif image.format == 'PNG':
                 png_meta = PngInfo()
                 png_meta.add_text('parameters', image_meta)
                 try:
@@ -462,7 +616,7 @@ def get_file_params(file:str, verbose=False):
     if ext.lower() == '.json':
         with open(file, "r") as jfile:
             return json.load(jfile)
-    elif ext.lower() in ['.png', '.jpg', '.jpeg']:
+    elif ext.lower() in ['.png', '.jpg', '.jpeg', '.webp']:
         with Image.open(file) as image:
             metadata = image.info
             params = dict()
@@ -482,6 +636,14 @@ def get_file_params(file:str, verbose=False):
                             params = sui
                         if verbose:
                             params = j
+            elif image.format == 'WEBP':
+                metadata = stealth.load(file)
+                if metadata:
+                    j = json.loads(metadata)
+                    if sui := j["sui_image_params"]:
+                        params = sui
+                    if verbose:
+                        params = j
             else:
                 print(f"{file}: no SwarmUI metadata found")
         return params
@@ -524,6 +686,14 @@ def _str2array(d:dict, k:str):
     ''')
 @click.option('-J', '--jpeg-quality', type=int,
     help='JPEG conversion quality (default 85)')
+@click.option('-w', '--webp-output', is_flag=True,
+    help='''
+        tell SwarmUI to generate WEBP output instead of PNG. This is
+        done after any other client-side modifications such as
+        --fix-resolution and --unsharp. Metadata will be stored with
+        the "stealth" method, in the low bits of the alpha channel.
+        Lossy quality is fixed at 85.
+    ''')
 @click.option('-t', '--template', default='$pre-$set-$seq.$ext',
     help="""
         filename template for generated images (default "$pre-$set-$seq.$ext").
@@ -540,7 +710,7 @@ def _str2array(d:dict, k:str):
 @click.option('--pad', default=4,
     help='zero-padding length for "seq" (default 4)')
 def cli(proto, host, port, aspect, sidelength, pre, set, seq, pad, template,
-    fix_resolution, jpeg_output, jpeg_quality):
+    fix_resolution, jpeg_output, jpeg_quality, webp_output):
     # TODO: process global options here to simplify subcommands;
     # just put them in a convenient global dict
     pass
@@ -757,7 +927,10 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                         s.crop = tuple([int(mul * i) for i in s.crop])
                     image_params['width'] = new_w
                     image_params['height'] = new_h
-            if 'jpeg_output' in s.params and s.params['jpeg_output']:
+            if 'webp_output' in s.params and s.params['webp_output']:
+                notes.append('webp:true')
+                ext = 'webp'
+            elif 'jpeg_output' in s.params and s.params['jpeg_output']:
                 notes.append('jpg:true')
                 ext = 'jpg'
             else:
@@ -914,7 +1087,7 @@ def list_luts(ctx, search):
     help='just print the before/after filenames')
 @click.argument('files', nargs=-1)
 @click.pass_context
-# TODO: add -j support to convert all to JPEG
+# TODO: add -j/-w support to convert all to JPEG/WEBP
 def rename(ctx, dry_run, files):
     """
     rename files to use a consistent format based on --pre|set|seq;
@@ -978,6 +1151,8 @@ def jpg(ctx, dry_run, resize, files):
 @click.pass_context
 def resize(ctx, dry_run, resize, longside, shortside, files):
     """resize PNG files (default 50%), preserving metadata"""
+    # TODO: preserve input format (resize JPG to JPG)
+    # TODO: parse -j/-w to convert PNG to JPG/WEBP
     for file in files:
         if os.path.isfile(file):
             params = json.dumps(get_file_params(file, True))
@@ -998,6 +1173,8 @@ def resize(ctx, dry_run, resize, longside, shortside, files):
                     ops['save'] = outname
                     process(ops).apply(image)
 
+# TODO: add dedicated crop command, preserving metadata and
+# supporting JPG conversion
 
 @cli.command()
 @click.pass_context

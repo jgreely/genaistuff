@@ -373,6 +373,15 @@ class swarmui:
                 luts = param['values']
         return luts
 
+    def get_server_params(self):
+        """retrieve all user-visible T2I parameters"""
+        params = list()
+        response = self._post("/API/ListT2IParams",
+            params={'session_id': self.session_id})
+        for param in response['list']:
+            if 'visible' in param and param['visible']:
+                params.append(param)
+        return params
 
     def _get(self, call:str, *, timeout=30):
         """Send GET request to a SwarmUI endpoint"""
@@ -1024,6 +1033,41 @@ def list_luts(ctx, search):
     else:
         for lut in s.get_luts():
             print(lut)
+
+def print_server_param(param, verbose):
+    print(f"{param['id']} ({param['name']})")
+    if verbose:
+        desc = '    ' + re.sub(r'^\n+', '', param['description'])
+        print(re.sub('\n', '\n    ', desc))
+        if type(param['values']) is list and len(param['values']) > 0:
+            print('    Values:')
+            for v in param['values']:
+                print(f'        {v}')
+        elif param['max'] > 0.0:
+            print(f"    Range: {param['min']} - {param['max']}")
+        print()
+
+@cli.command()
+@click.option('-v', '--verbose', is_flag=True,
+    help='print more detail about each parameter')
+@click.argument('search', nargs=-1)
+@click.pass_context
+def list_params(ctx, search, verbose):
+    """print list of T2I params available on the server (including active extensions)"""
+    s = swarmui(
+        proto=ctx.parent.params['proto'],
+        host=ctx.parent.params['host'],
+        port=ctx.parent.params['port']
+    )
+    s.params = ctx.parent.params
+    s.session_id = s.create_session()
+    if search:
+        for param in s.get_server_params():
+            if search[0].casefold() in param['id'].casefold():
+                print_server_param(param, verbose)
+    else:
+        for param in s.get_server_params():
+            print_server_param(param, verbose)
 
 @cli.command()
 @click.option('-n', '--dry-run', is_flag=True,

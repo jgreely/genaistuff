@@ -8,10 +8,13 @@ files.
     - gen: create an image based on rules, metadata, and options
     - jpg: batch-convert image files to JPG, optionally resizing them
     - rename: batch-rename image files based on --pre|set|seq options
+    - resize: batch-resize image files by percentage or target pixels
     - params: extract parameters from PNG, JPG, and JSON files
     - prompt: shortcut for `params -p`
     - list-rules: list canned parameter sets (built-in or ~/.sui)
     - list-models: list available base models, loras, or vae
+    - list-luts: print list of available LUTs
+    - list-params: print list of T2I params available on the server
     - status: return server/backend status
 
 Note: to avoid getting into the weeds with EXIF, `PyExifTool` is used,

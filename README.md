@@ -7,6 +7,7 @@ files.
 
     - gen: create an image based on rules, metadata, and options
     - jpg: batch-convert image files to JPG, optionally resizing them
+    - webp: batch-convert image files to WEBP w/stealth metadata
     - rename: batch-rename image files based on --pre|set|seq options
     - resize: batch-resize image files by percentage or target pixels
     - params: extract parameters from PNG, JPG, and JSON files

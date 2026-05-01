@@ -1129,6 +1129,33 @@ def jpg(ctx, dry_run, resize, files):
 @cli.command()
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the before/after filenames')
+@click.option('-r', '--resize', default=100,
+    help='percentage to resize image to (default: no change)')
+@click.argument('files', nargs=-1)
+@click.pass_context
+def webp(ctx, dry_run, resize, files):
+    """convert PNG files to WEBP, with stealth metadata and optionally resizing"""
+    for file in files:
+        if os.path.isfile(file):
+            params = json.dumps(get_file_params(file, True))
+            with Image.open(file) as image:
+                base, ext = os.path.splitext(file)
+                outname = f"{base}.webp"
+                ops = dict()
+                if resize < 100:
+                    ops['size'] = resize
+                if dry_run:
+                    print(file, outname)
+                else:
+                    ops['meta'] = params
+                    ops['webp'] = True
+                    ops['save'] = outname
+                    process(ops).apply(image)
+
+
+@cli.command()
+@click.option('-n', '--dry-run', is_flag=True,
+    help='just print the before/after filenames')
 @click.option('-r', '--resize', default=50,
     help='percentage to resize image to (default: 50%)')
 @click.option('-s', '--shortside', type=int,

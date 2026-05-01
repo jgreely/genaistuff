@@ -226,9 +226,10 @@ class stealth:
             signed=False)
         magic = bytes('stealth_pngcomp', encoding='utf-8')
         data = magic + paylen + payload
-        # TODO: decleverize this
-        alphabits = [255 - (1 - ((byte >> i) & 1)) for byte in data for i in range(7, -1, -1)]
-
+        alphabits = list()
+        for byte in data:
+            for i in format(byte, '08b'):
+                alphabits.append(int(i)+254)
         offset = 0
         for x in range(im.width):
             for y in range(im.height):

@@ -582,10 +582,10 @@ class process:
                 threshold=int(op['sharp']['t'])))
         # TODO: collapse these two into 'save' so it picks up the exif
         # data and saves only once
-        if 'webp' in op:
+        if 'webp' in op and op['webp']:
             stealth.save(image, op['save'], image_meta)
             del op['save']
-        elif 'jpg' in op:
+        elif 'jpg' in op and op['jpg']:
             jpg_quality = 85
             if type(op['jpg']) is int and op['jpg'] < 100 and op['jpg'] > 0:
                 jpg_quality = op['jpg']
@@ -607,7 +607,8 @@ class process:
                 exiftool.ExifToolHelper().set_tags(op['save'],
                     {'EXIF:UserComment': json.dumps(json.loads(image_meta))},
                     params=['-overwrite_original', '-preserve'])
-            elif image.format == 'PNG':
+            # crop() and resize() clear image.format, sigh
+            elif image.format == 'PNG' or image.format is None:
                 png_meta = PngInfo()
                 png_meta.add_text('parameters', image_meta)
                 try:
@@ -1245,8 +1246,57 @@ def resize(ctx, dry_run, resize, longside, shortside, files):
                     ops['save'] = outname
                     process(ops).apply(image)
 
-# TODO: add dedicated crop command, preserving metadata and
-# supporting JPG conversion
+@cli.command()
+@click.option('-n', '--dry-run', is_flag=True,
+    help='just print the before/after filenames')
+@click.option('-w', '--width', type=int,
+    help='')
+@click.option('-h', '--height', type=int,
+    help='')
+@click.option('-o', '--origin', type=str,
+    help='x,y coordinates of upper left corner of cropped area')
+@click.argument('files', nargs=-1)
+@click.pass_context
+def crop(ctx, dry_run, width, height, origin, files):
+    """crop image files, preserving metadata; defaults to centered"""
+    # TODO: preserve input format (crop JPG to JPG)
+    # TODO: parse -j/-w to convert PNG to JPG/WEBP
+    for file in files:
+        if os.path.isfile(file):
+            params = json.dumps(get_file_params(file, True))
+            with Image.open(file) as image:
+                iw, ih = image.size
+                base, ext = os.path.splitext(file)
+                if ctx.parent.params['webp_output']:
+                    ops['webp'] = True
+                    ext = 'webp'
+                elif ctx.parent.params['jpeg_output']:
+                    ops['jpg'] = True
+                    ext = 'jpg'
+                elif ext.lower() != '.png':
+                    ops[ext.lower()] = True
+                else:
+                    ext = 'png'
+                outname = f"{base}-crop.{ext}"
+                ops = dict()
+                ops['save'] = outname
+                if origin and ',' in origin:
+                    x, y = (int(x) for x in origin.split(','))
+                    if x + width > iw or y + height > ih:
+                        print(f"{file}: can't be cropped to {width}x{height} from origin {x},{y}")
+                        del ops['save']
+                elif iw > width or ih > height:
+                    x = (iw - width) // 2
+                    y = (ih - height) // 2
+                else:
+                    print(f"{file}: can't be cropped to {width}x{height}")
+                    del ops['save']
+                ops['crop'] = (x, y, x+width, y+height)
+                ops['meta'] = params
+                if dry_run:
+                    print(file, outname, x, y, x+width, y+height)
+                elif 'save' in ops:
+                    process(ops).apply(image)
 
 @cli.command()
 @click.pass_context

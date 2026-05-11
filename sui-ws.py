@@ -1301,7 +1301,7 @@ def crop(ctx, dry_run, width, height, origin, files):
 @cli.command()
 @click.pass_context
 def status(ctx):
-    "return server/backend status"
+    "return server/backend status; this is currently not very useful"
     s = swarmui(
         proto=ctx.parent.params['proto'],
         host=ctx.parent.params['host'],

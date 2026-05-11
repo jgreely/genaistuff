@@ -255,6 +255,9 @@ model = lms.llm(model_id, config = {
     "repeatPenalty" : args.penalty,
     "maxTokens" : args.tokens
 })
+if args.debug:
+    print('Model config:', model.get_load_config())
+    print('Model info:', model.get_info())
 
 if args.sysprompt:
     system_prompts = list() # override default

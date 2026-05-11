@@ -56,6 +56,17 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
   posted to the SwarmUI Discord channel by user Hippotes, with
   some typos corrected and some weights added. Use as `__p/random__`.
 
+## Third-party libraries used
+
+* click
+* dynamicprompts (dp.py only)
+* lmstudio (prompt.py only)
+* pillow
+* PyExifTool
+* PyYAML (dp.py only)
+* requests
+* websockets (sui-ws.py only)
+
 ## My image-generation workflow
 
 Typically I generate a few hundred prompts with `dp.py`, feed them to

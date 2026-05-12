@@ -23,6 +23,22 @@ import secrets
 #
 partial_enhancement_regexp = r'( *)@<(?:([_A-Za-z0-9]+):)? *([^>]+) *>@( *)'
 
+default_vision_model='qwen/qwen3-vl-4b'
+default_vision_prompt="""
+Analyze this image and provide a detailed image-generation prompt for
+advanced models, as a single flowing paragraph. Focus on the subject,
+lighting (type, source, intensity), color palette, composition, camera
+angle, and artistic style. Do not make up stories about the image,
+keep it factual. Do not include any formatting. Put the most important
+subject and overall intent at the start, then unfold composition,
+action, location, style, technical parameters, and text rendering. Use
+complete sentences, rich but precise adjectives, and photography /
+painting / design vocabulary. Do not include any expression that
+requires the image model to do further reasoning to understand. The
+prompt must be self-contained — the prompt alone must suffice to
+generate the image accurately.
+"""
+
 default_system_prompt="""
 [DEFAULT]
 # modified from Qwen Image's default enhancement prompt
@@ -167,6 +183,9 @@ parser = argparse.ArgumentParser(
         will be interpreted as names for alternative system prompts.
     """
 )
+parser.add_argument('-i', '--images',
+    action='append', default=[],
+    help='ask a vision-capable model to describe the contents of the files passed as arguments')
 parser.add_argument('-s', '--show-prompts',
     action='store_true',
     help='list system prompts available in ~/.pyprompt'
@@ -225,7 +244,10 @@ config_file = os.path.join(os.path.expanduser("~"), ".pyprompt")
 if os.path.isfile(config_file):
     config.read(config_file)
 system_prompts = list()
-system_prompts.append(config.get('DEFAULT', 'prompt'))
+if args.images:
+    system_prompts.append(default_vision_prompt)
+else:
+    system_prompts.append(config.get('DEFAULT', 'prompt'))
 
 SERVER_API_HOST = config.get('DEFAULT', 'url', fallback='localhost:1234')
 if args.url:
@@ -235,6 +257,8 @@ lms.set_sync_api_timeout(120)
 
 if args.model:
     model_id = args.model
+elif args.images:
+    model_id = default_vision_model
 else:
     model_id = config.get('DEFAULT', 'model', fallback='openai/gpt-oss-20b')
 
@@ -259,16 +283,50 @@ if args.debug:
     print('Model config:', model.get_load_config())
     print('Model info:', model.get_info())
 
-if args.sysprompt:
+if args.sysprompt and len(args.sysprompt) > 0:
     system_prompts = list() # override default
     for prompt_key in args.sysprompt:
         if prompt_key in ['default', '-', '.']:
-            system_prompts.append(config.get('DEFAULT', 'prompt'))
+            if args.images:
+                system_prompts.append(default_vision_prompt)
+            else:
+                system_prompts.append(config.get('DEFAULT', 'prompt'))
         elif config.has_option('DEFAULT', prompt_key):
             system_prompts.append(config.get('DEFAULT', prompt_key))
         else:
             print(f"system prompt '{prompt_key}' not found in ~/.pyprompt")
             sys.exit()
+
+if args.images:
+    # TODO: all sysprompts after the first should fall through to
+    # standard prompt-enhancing code
+    system_prompt = system_prompts[0]
+    for image_file in args.images:
+        try:
+            image_handle = lms.prepare_image(image_file)
+        except Exception as e:
+            print(e)
+            sys.exit()
+        chat = lms.Chat()
+        chat.add_system_prompt(system_prompt)
+        chat.add_user_message("Describe the attached image",
+            images=[image_handle])
+        prediction = model.respond(chat)
+        response = prediction.content
+        response = multi_replace(response, [
+            ( r'^.*</seed:think>', '' ), # seed-oss-style
+            ( r'^.*</think>', '' ),
+            ( r'^.*<.message.>', '' ),
+            ( r'\n', ' ' ),
+            ( r'^.*<channel.>', ''), # gemma-4, need to make it one-line first
+            ( r'^ +', '' ),
+            ( r' +$', '' ),
+            ( r'’+', '’' ),
+            ( r'\.+', '.'),
+            ( r' +', ' ' )
+        ])
+        print(response, flush=True)
+    sys.exit()
 
 for prompt in sys.stdin:
     for system_prompt in system_prompts:

@@ -186,6 +186,9 @@ parser = argparse.ArgumentParser(
 parser.add_argument('-i', '--images',
     action='append', default=[],
     help='ask a vision-capable model to describe the contents of the files passed as arguments')
+parser.add_argument('-r', '--raw',
+    action='store_true',
+    help='do not strip newlines from output')
 parser.add_argument('-s', '--show-prompts',
     action='store_true',
     help='list system prompts available in ~/.pyprompt'
@@ -313,19 +316,29 @@ if args.images:
             images=[image_handle])
         prediction = model.respond(chat)
         response = prediction.content
-        response = multi_replace(response, [
-            ( r'^.*</seed:think>', '' ), # seed-oss-style
-            ( r'^.*</think>', '' ),
-            ( r'^.*<.message.>', '' ),
-            ( r'\n', ' ' ),
-            ( r'^.*<channel.>', ''), # gemma-4, need to make it one-line first
-            ( r'^ +', '' ),
-            ( r' +$', '' ),
-            ( r'’+', '’' ),
-            ( r'\.+', '.'),
-            ( r' +', ' ' )
-        ])
-        print(response, flush=True)
+        if args.debug:
+            print(f'DEBUG: |{system_prompt}|{response}|',
+                file=sys.stderr)
+        else:
+            response = multi_replace(response, [
+                ( r'^.*</seed:think>', '' ), # seed-oss-style
+                ( r'^.*</think>', '' ),
+                ( r'^.*<.message.>', '' )
+            ])
+            if not args.raw:
+                response = multi_replace(response, [
+                    ( r'\n', ' ' ),
+                    # gemma-4, need to make it one-line first
+                    ( r'^.*<channel.>', '')
+                ])
+            response = multi_replace(response, [
+                ( r'^ +', '' ),
+                ( r' +$', '' ),
+                ( r'’+', '’' ),
+                ( r'\.+', '.'),
+                ( r' +', ' ' )
+            ])
+            print(response, flush=True)
     sys.exit()
 
 for prompt in sys.stdin:
@@ -352,9 +365,13 @@ for prompt in sys.stdin:
                 ])
         prompt = response
     if not args.debug:
+        if not args.raw:
+            response = multi_replace(response, [
+                ( r'\n', ' ' ),
+                # gemma-4, need to make it one-line first
+                ( r'^.*<channel.>', '') 
+            ])
         response = multi_replace(response, [
-            ( r'\n', ' ' ),
-            ( r'^.*<channel.>', ''), # gemma-4, need to make it one-line first
             ( r'^ +', '' ),
             ( r' +$', '' ),
             ( r'’+', '’' ),

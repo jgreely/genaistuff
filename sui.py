@@ -534,6 +534,8 @@ class process:
                 jpg_quality = op['jpg']
             # in-memory conversion
             f = io.BytesIO()
+            if image.mode == 'RGBA':
+                image = image.convert('RGB')
             image.save(f, 'JPEG', optimize=True, quality=jpg_quality,
                 progressive=True)
             f.seek(0)
@@ -552,6 +554,8 @@ class process:
                     params=['-overwrite_original', '-preserve'])
             # crop() and resize() clear image.format, sigh
             elif image.format == 'PNG' or image.format is None:
+                if image.mode == 'RGBA':
+                    image = image.convert('RGB')
                 png_meta = PngInfo()
                 png_meta.add_text('parameters', image_meta)
                 try:
@@ -1099,6 +1103,10 @@ def rename(ctx, dry_run, files):
                 click.FileError(f"rename '{file}' to '{outname}': {e}")
         seq += 1
 
+
+# TODO: add a generic "mod" command that can run jpg, webp, resize,
+# unsharp, and crop; make the other commands wrappers for it, so they
+# all inherit the same behaviors with less code duplication.
 
 @cli.command()
 @click.option('-n', '--dry-run', is_flag=True,

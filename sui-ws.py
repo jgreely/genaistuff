@@ -591,6 +591,8 @@ class process:
                 jpg_quality = op['jpg']
             # in-memory conversion
             f = io.BytesIO()
+            if image.mode == 'RGBA':
+                image = image.convert('RGB')
             image.save(f, 'JPEG', optimize=True, quality=jpg_quality,
                 progressive=True)
             f.seek(0)
@@ -609,6 +611,8 @@ class process:
                     params=['-overwrite_original', '-preserve'])
             # crop() and resize() clear image.format, sigh
             elif image.format == 'PNG' or image.format is None:
+                if image.mode == 'RGBA':
+                    image = image.convert('RGB')
                 png_meta = PngInfo()
                 png_meta.add_text('parameters', image_meta)
                 try:
@@ -1157,6 +1161,10 @@ def rename(ctx, dry_run, files):
         seq += 1
 
 
+# TODO: add a generic "mod" command that can run jpg, webp, resize,
+# unsharp, and crop; make the other commands wrappers for it, so they
+# all inherit the same behaviors with less code duplication.
+
 @cli.command()
 @click.option('-n', '--dry-run', is_flag=True,
     help='just print the before/after filenames')
@@ -1265,20 +1273,22 @@ def crop(ctx, dry_run, width, height, origin, files):
         if os.path.isfile(file):
             params = json.dumps(get_file_params(file, True))
             with Image.open(file) as image:
+                ops = dict()
                 iw, ih = image.size
                 base, ext = os.path.splitext(file)
+                ext = ext.lstrip('.')
                 if ctx.parent.params['webp_output']:
                     ops['webp'] = True
                     ext = 'webp'
                 elif ctx.parent.params['jpeg_output']:
                     ops['jpg'] = True
                     ext = 'jpg'
-                elif ext.lower() != '.png':
+                elif ext.lower() != 'png':
                     ops[ext.lower()] = True
                 else:
                     ext = 'png'
                 outname = f"{base}-crop.{ext}"
-                ops = dict()
+                ops['meta'] = params
                 ops['save'] = outname
                 if origin and ',' in origin:
                     x, y = (int(x) for x in origin.split(','))

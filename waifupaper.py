@@ -62,7 +62,7 @@ def get_display_count():
     try:
         # Use system_profiler to get display information
         result = subprocess.run(
-            ['system_profiler', 'SPDisplaysDataType'],
+            ['/usr/sbin/system_profiler', 'SPDisplaysDataType'],
             capture_output=True,
             text=True,
             check=True

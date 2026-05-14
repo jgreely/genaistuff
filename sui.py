@@ -1208,20 +1208,22 @@ def crop(ctx, dry_run, width, height, origin, files):
         if os.path.isfile(file):
             params = json.dumps(get_file_params(file, True))
             with Image.open(file) as image:
+                ops = dict()
                 iw, ih = image.size
                 base, ext = os.path.splitext(file)
+                ext = ext.lstrip('.')
                 if ctx.parent.params['webp_output']:
                     ops['webp'] = True
                     ext = 'webp'
                 elif ctx.parent.params['jpeg_output']:
                     ops['jpg'] = True
                     ext = 'jpg'
-                elif ext.lower() != '.png':
+                elif ext.lower() != 'png':
                     ops[ext.lower()] = True
                 else:
                     ext = 'png'
                 outname = f"{base}-crop.{ext}"
-                ops = dict()
+                ops['meta'] = params
                 ops['save'] = outname
                 if origin and ',' in origin:
                     x, y = (int(x) for x in origin.split(','))

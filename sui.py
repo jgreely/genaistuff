@@ -47,6 +47,7 @@ preset_exclude_params = [
     'wildcardseed',
     'prompt',
     'negativeprompt',
+    'seedvrimagefile',
     'batchsize',
     'imageformat',
     'donotsave'

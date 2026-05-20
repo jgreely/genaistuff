@@ -16,6 +16,7 @@ files.
     - list-models: list available base models, loras, or vae
     - list-luts: print list of available LUTs
     - list-params: print list of T2I params available on the server
+    - preset: create a server preset from merged image metadata
     - status: return server/backend status
 
 Note: to avoid getting into the weeds with EXIF, `PyExifTool` is used,

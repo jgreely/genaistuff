@@ -40,6 +40,17 @@ array_params = [
     'loratencweights',
     'lorasectionconfinement'
 ]
+preset_exclude_params = [
+    'images',
+    'seed',
+    'variationseed',
+    'wildcardseed',
+    'prompt',
+    'negativeprompt',
+    'batchsize',
+    'imageformat',
+    'donotsave'
+]
 
 # canned sets of parameters; override by creating ~/.sui
 # 
@@ -383,6 +394,18 @@ class swarmui:
             if 'visible' in param and param['visible']:
                 params.append(param)
         return params
+
+    def create_preset(self, name:str, params:dict):
+        """Create a new preset on the server containing the supplied params"""
+        response = self._post("/API/AddNewPreset", params={
+            'session_id': self.session_id,
+            'title': name,
+            'description': 'created by sui.py from image metadata',
+            'param_map': params,
+            'is_edit': False
+        })
+        if 'preset_fail' in response:
+            raise click.UsageError(f"{name}: {response['preset_fail']}")
 
     def _get(self, call:str, *, timeout=30):
         """Send GET request to a SwarmUI endpoint"""
@@ -1251,17 +1274,57 @@ def crop(ctx, dry_run, width, height, origin, files):
                 elif 'save' in ops:
                     process(ops).apply(image)
 
+
+@cli.command()
+@click.option('-n', '--name', type=str,
+    help='name of preset (defaults to first image filename)')
+# TODO: implement include/exclude/all
+@click.argument('files', nargs=-1)
+@click.pass_context
+def preset(ctx, name, files):
+    s = swarmui(
+        proto=ctx.parent.params['proto'],
+        host=ctx.parent.params['host'],
+        port=ctx.parent.params['port']
+    )
+    s.params = ctx.parent.params
+    s.session_id = s.create_session()
+    params = dict()
+    for file in files:
+        if os.path.isfile(file):
+            file_params = get_file_params(file)
+            if not params:
+                params = file_params
+            else:
+                params = s.merge_params([params, file_params])
+    for noise in invalid_params:
+        if noise in params:
+            del params[noise]
+    for exclude in preset_exclude_params:
+        if exclude in params:
+            del params[exclude]
+    for p in params.copy():
+        if params[p] == "":
+            del params[p]
+    for fixup in array_params:
+        if fixup in params:
+            _array2str(params, fixup)
+    if name is None:
+        name = os.path.split(os.path.splitext(files[0])[0])[1]
+    s.create_preset(name, params)
+
+
 @cli.command()
 @click.pass_context
 def status(ctx):
-    "return server/backend status; this is currently not very useful"
+    "return server/backend status"
     s = swarmui(
         proto=ctx.parent.params['proto'],
         host=ctx.parent.params['host'],
         port=ctx.parent.params['port']
     )
     session_id = s.create_session()
-    response = s._post("/API/GetCurrentStatus",
+    response = s._post("/API/GetGlobalStatus",
         params={'session_id': session_id})
     print(json.dumps(response['status'], indent=4))
     print(json.dumps(response['backend_status'], indent=4))

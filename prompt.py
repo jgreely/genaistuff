@@ -224,6 +224,12 @@ parser.add_argument('-T', '--tokens',
 parser.add_argument('-u', '--url',
     type= str,
     help='URL of LM Studio server')
+parser.add_argument('-e', '--escape',
+    action='store_true',
+    help='''
+        escape character sequences that trigger errors with CLIP parsers,
+        specifically a colon inside of parentheses or brackets.
+    ''')
 parser.add_argument('-d', '--debug',
     action='store_true',
     help='print raw response from LLM, to catch formatting errors and refusals'
@@ -378,6 +384,11 @@ for prompt in sys.stdin:
             ( r'\.+', '.'),
             ( r' +', ' ' )
         ])
+        if args.escape:
+            response = multi_replace(response, [
+                ( r'\[([^]]*):([^]]*)\]', r'[\1\:\2]' ),
+                ( r'\(([^)]*):([^)]*)\)', r'(\1\:\2)' )
+            ])
     try:
         print(response, flush=True)
     except:

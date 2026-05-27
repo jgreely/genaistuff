@@ -1283,6 +1283,7 @@ def crop(ctx, dry_run, width, height, origin, files):
 @click.argument('files', nargs=-1)
 @click.pass_context
 def preset(ctx, name, files):
+    """merge params from images and create a preset on the server"""
     s = swarmui(
         proto=ctx.parent.params['proto'],
         host=ctx.parent.params['host'],
@@ -1327,8 +1328,9 @@ def status(ctx):
     session_id = s.create_session()
     response = s._post("/API/GetGlobalStatus",
         params={'session_id': session_id})
-    print(json.dumps(response['status'], indent=4))
-    print(json.dumps(response['backend_status'], indent=4))
+    print(json.dumps({
+        'status': response['status'],
+        'backend_status': response['backend_status']}, indent=4))
 
 def substring_match(item:str, match_list:list, /, match_type='match'):
     """

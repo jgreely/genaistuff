@@ -42,6 +42,12 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
     - `-t`: set model temperature
     - sysprompt: search `~/.pyprompt` for an alternative system prompt
 
+* prompt_ollama_server.py - minimal Ollama server to feed generated
+  prompts to the SwarmUI GUI via the MagicPrompt extension. You use
+  the companion script `prompt_server_feed.sh` to upload a bunch of
+  one-line prompts, and the server will return them as chat responses,
+  in the order they were uploaded.
+
 * pyshed.py - efficiently emulate the behavior of `shuf|head` for very
   large text files, quickly retrieving N random lines.
     - `-c`: number of random lines to extract (default 10)

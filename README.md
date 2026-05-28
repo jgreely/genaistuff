@@ -76,11 +76,13 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 
 * click
 * dynamicprompts (dp.py only)
+* fastapi (ollama2lmstudio.py & prompt_ollama_server.py)
 * lmstudio (prompt.py only)
 * pillow
 * PyExifTool
 * PyYAML (dp.py only)
 * requests
+* uvicorn (ollama2lmstudio.py & prompt_ollama_server.py)
 * websockets (sui-ws.py only)
 
 ## My image-generation workflow

@@ -58,6 +58,9 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * waifupaper.py - MacOS wallpaper-rotation script with more
   options than the standard control-panel settings.
 
+* lmscrub.pl - scrub server responses from an LM Studio chat, leaving
+  only the user prompts.
+
 * randompeople.yaml - dynamicprompts wildcards converted from a
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with

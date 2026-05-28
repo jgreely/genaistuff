@@ -48,6 +48,12 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
   one-line prompts, and the server will return them as chat responses,
   in the order they were uploaded.
 
+* ollama2lmstudio.py - shim that emulates an Ollama server and forwards
+  requests to LM Studio. TL/DR: MagicPrompt doesn't support LM Studio
+  directly, and using the OpenAI API emulation is flaky. Works for
+  MagicPrompt's chat, prompt, and vision modes; hasn't been tested for
+  anything else.
+
 * pyshed.py - efficiently emulate the behavior of `shuf|head` for very
   large text files, quickly retrieving N random lines.
     - `-c`: number of random lines to extract (default 10)

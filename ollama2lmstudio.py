@@ -14,9 +14,6 @@ import base64
 import argparse
 import re
 
-listen_addr = "0.0.0.0"
-listen_port = 8001
-
 parser = argparse.ArgumentParser(
     prog='ollama2lmstudio',
     add_help=False,
@@ -138,8 +135,6 @@ async def api_chat(request: Request):
         "eval_duration": 1
     }
 
-# NOTE: server is exposed on network for remote SwarmUI use;
-# don't do this in on a public network.
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host=listen_addr, port=listen_port)
+    uvicorn.run(app, host=args.server_host, port=args.server_port)

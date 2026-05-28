@@ -12,6 +12,7 @@ from fastapi import FastAPI, Request
 import lmstudio as lms
 import base64
 import argparse
+import re
 
 listen_addr = "0.0.0.0"
 listen_port = 8001
@@ -117,6 +118,8 @@ async def api_chat(request: Request):
         
     prediction = model.respond(chat)
     response = prediction.content
+    if "</think>" in response:
+        response = re.sub(r'^.*</think>\n*', '', response, flags = re.DOTALL)
 
     return {
         "stream": False,

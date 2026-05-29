@@ -230,6 +230,10 @@ parser.add_argument('-e', '--escape',
         escape character sequences that trigger errors with CLIP parsers,
         specifically a colon inside of parentheses or brackets.
     ''')
+parser.add_argument('-c', '--clipstrip',
+    action='store_true',
+    help='remove CLIP emphasis "(...:1.1)", "[...:0.5]"'
+)
 parser.add_argument('-d', '--debug',
     action='store_true',
     help='print raw response from LLM, to catch formatting errors and refusals'
@@ -348,6 +352,11 @@ if args.images:
     sys.exit()
 
 for prompt in sys.stdin:
+    if args.clipstrip:
+        prompt = multi_replace(prompt, [
+            ( r'\(([^)]+):[^)]+\)', r'\1' ),
+            ( r'\[([^]]+):[^]]+\]', r'\1' )
+        ])
     for system_prompt in system_prompts:
         if '@<' in prompt and '>@' in prompt:
             response = re.sub(partial_enhancement_regexp,

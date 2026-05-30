@@ -24,6 +24,10 @@ parser.add_argument('-c', '--count',
     default=10,
     help = 'number of lines to extract'
 )
+parser.add_argument('-d', '--debug',
+    action='store_true',
+    help='print debug text'
+)
 parser.add_argument(
     'files',
     nargs='+',
@@ -38,18 +42,23 @@ for file in args.files:
     else:
         offset_file = f".cache-{filename}"
     if not os.path.exists(offset_file) or os.path.getmtime(offset_file) < os.path.getmtime(file):
+        if args.debug:
+            print(f"DEBUG: no cache file {offset_file} for {filename}")
         offset = 0
         with open(offset_file, "w") as output:
             with open(file, "rb") as input:
                 for line in input:
-                    print(f"{offset:08x}", file=output, end="\r\n")
+                    print(f"{offset:010x}", file=output, end="\r\n")
                     offset += len(line)
-    total_lines = os.path.getsize(offset_file) // 10
+    record_length = 12
+    total_lines = os.path.getsize(offset_file) // record_length
     with open(offset_file, "r") as cache:
         with open(file, "rb") as input:
             for i in random.sample(range(total_lines), args.count):
-                cache.seek(i * 10, 0)
+                cache.seek(i * record_length, 0)
                 offset_hex = cache.readline()
+                if args.debug:
+                    print(f"DEBUG: seek to {i*record_length} ({i} * record_length): {offset_hex}")
                 offset = int(offset_hex, base=16)
                 input.seek(offset, 0)
                 sys.stdout.buffer.write(input.readline())

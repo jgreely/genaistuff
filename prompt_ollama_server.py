@@ -77,13 +77,17 @@ async def api_chat(request: Request):
     The non-streaming response is used by both chat and prompt modes.
     """
     body = await request.body()
+    if len(responses) > 0:
+        response = f"<comment:{len(responses)-1}>\n{responses.pop(0)}"
+    else:
+        response = "<comment:no loaded prompts>"
     return {
         "stream": False,
         "model": "botbot",
         "created_at": "2026-01-02T03:04:05Z",
         "message": {
             "role": "assistant",
-            "content": responses.pop(0) if len(responses)>0 else "no loaded prompts"
+            "content": response
         },
         "done": True,
         "total_duration": 1,

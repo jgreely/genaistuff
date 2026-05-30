@@ -83,6 +83,41 @@ async def api_tags(request: Request):
     }
 
 
+# ollamavision extension uses this call instead
+@app.post("/api/generate")
+async def api_generate(request: Request):
+    body = await request.json()
+    model = lms.llm(body["model"])
+    new_images = list()
+    if "images" in body:
+        # we're doing vision!
+        for image in body["images"]:
+            raw = base64.b64decode(image)
+            new_images.append(lms.prepare_image(raw))
+        # TODO: copy temp, seed, top_k, num_predict, repeat_penalty from options
+    chat = lms.Chat()
+    chat.add_user_message(body["prompt"],
+        images=new_images)
+    prediction = model.respond(chat)
+    response = prediction.content
+
+    if "</think>" in response:
+        response = re.sub(r'^.*</think>\n*', '', response, flags = re.DOTALL)
+
+    return {
+        "response": response,
+        "stream": False,
+        "model": model_id,
+        "created_at": "2026-01-02T03:04:05Z",
+        "total_duration": 1,
+        "load_duration": 1,
+        "prompt_eval_count": 1,
+        "prompt_eval_duration": 1,
+        "eval_count": 1,
+        "eval_duration": 1
+    }
+
+
 @app.post("/api/chat")
 async def api_chat(request: Request):
     """

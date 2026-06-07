@@ -610,6 +610,10 @@ def get_file_params(file:str, verbose=False):
                             params = sui
                         if verbose:
                             params = j
+                elif 'prompt' in metadata:
+                    # fallback to ComfyUI workflow
+                    p = metadata["prompt"]
+                    params = json.loads(p)
             elif image.format == 'JPEG':
                 metadata = exiftool.ExifToolHelper().get_metadata(file)[0]
                 if 'EXIF:UserComment' in metadata:

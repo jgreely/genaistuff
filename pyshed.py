@@ -28,6 +28,9 @@ parser.add_argument('-d', '--debug',
     action='store_true',
     help='print debug text'
 )
+parser.add_argument('-l', '--line-count',
+    action='store_true',
+    help='print the number of lines in each file')
 parser.add_argument(
     'files',
     nargs='+',
@@ -52,13 +55,16 @@ for file in args.files:
                     offset += len(line)
     record_length = 12
     total_lines = os.path.getsize(offset_file) // record_length
-    with open(offset_file, "r") as cache:
-        with open(file, "rb") as input:
-            for i in random.sample(range(total_lines), args.count):
-                cache.seek(i * record_length, 0)
-                offset_hex = cache.readline()
-                if args.debug:
-                    print(f"DEBUG: seek to {i*record_length} ({i} * record_length): {offset_hex}")
-                offset = int(offset_hex, base=16)
-                input.seek(offset, 0)
-                sys.stdout.buffer.write(input.readline())
+    if args.line_count:
+        print(f"{total_lines:10d} {file}")
+    else:
+        with open(offset_file, "r") as cache:
+            with open(file, "rb") as input:
+                for i in random.sample(range(total_lines), args.count):
+                    cache.seek(i * record_length, 0)
+                    offset_hex = cache.readline()
+                    if args.debug:
+                        print(f"DEBUG: seek to {i*record_length} ({i} * record_length): {offset_hex}")
+                    offset = int(offset_hex, base=16)
+                    input.seek(offset, 0)
+                    sys.stdout.buffer.write(input.readline())

@@ -42,17 +42,18 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
     - `-t`: set model temperature
     - sysprompt: search `~/.pyprompt` for an alternative system prompt
 
-* prompt_ollama_server.py - minimal Ollama server to feed generated
-  prompts to the SwarmUI GUI via the MagicPrompt extension. You use
-  the companion script `prompt_server_feed.sh` to upload a bunch of
-  one-line prompts, and the server will return them as chat responses,
-  in the order they were uploaded.
+* prompt-server/prompt_ollama_server.py - minimal Ollama server to feed
+  generated prompts to the SwarmUI GUI via the MagicPrompt extension.
+  You use the companion script `prompt_server_feed.sh` to upload a
+  bunch of one-line prompts, and the server will return them as chat
+  responses, in the order they were uploaded. 
+  `prompt_server_count.sh` returns the current number of loaded
+  prompts and `prompt_server_clear.sh` deletes them all.
 
-* ollama2lmstudio.py - shim that emulates an Ollama server and forwards
-  requests to LM Studio. TL/DR: MagicPrompt doesn't support LM Studio
-  directly, and using the OpenAI API emulation is flaky. Works for
-  MagicPrompt's chat, prompt, and vision modes; hasn't been tested for
-  anything else.
+* ol2lm.py - shim that emulates an Ollama server and forwards
+  requests to LM Studio. Works for both the MagicPrompt and
+  Ollamavision extensions (although Ollamavision now has stable
+  support for LM Studio via its OpenAI API support).
 
 * pyshed.py - efficiently emulate the behavior of `shuf|head` for very
   large text files, quickly retrieving N random lines.
@@ -78,13 +79,13 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 
 * click
 * dynamicprompts (dp.py only)
-* fastapi (ollama2lmstudio.py & prompt_ollama_server.py)
+* fastapi (ol2lm.py & prompt-server/prompt_ollama_server.py)
 * lmstudio (prompt.py only)
 * pillow
 * PyExifTool
 * PyYAML (dp.py only)
 * requests
-* uvicorn (ollama2lmstudio.py & prompt_ollama_server.py)
+* uvicorn (ol2lm.py & prompt-server/prompt_ollama_server.py)
 * websockets (sui-ws.py only)
 
 ## My image-generation workflow

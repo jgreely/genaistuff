@@ -395,8 +395,8 @@ for prompt in sys.stdin:
         ])
         if args.escape:
             response = multi_replace(response, [
-                ( r'\[([^]]*):([^]]*)\]', r'[\1\:\2]' ),
-                ( r'\(([^)]*):([^)]*)\)', r'(\1\:\2)' )
+                ( r'\[([^]]*):([^]]*)\]', r'\[\1:\2]' ),
+                ( r'\(([^)]*):([^)]*)\)', r'\(\1:\2)' )
             ])
     try:
         print(response, flush=True)

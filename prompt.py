@@ -193,6 +193,9 @@ parser.add_argument('-s', '--show-prompts',
     action='store_true',
     help='list system prompts available in ~/.pyprompt'
 )
+parser.add_argument('-S', '--sysprompt-dump',
+    action='store_true',
+    help='dump the contents of the named/default system prompt')
 parser.add_argument('-l', '--list',
     action='store_true',
     help = 'list available models on the server.'
@@ -309,6 +312,11 @@ if args.sysprompt and len(args.sysprompt) > 0:
         else:
             print(f"system prompt '{prompt_key}' not found in ~/.pyprompt")
             sys.exit()
+
+if args.sysprompt_dump:
+    for prompt in system_prompts:
+        print(prompt)
+    sys.exit()
 
 if args.images:
     # TODO: all sysprompts after the first should fall through to

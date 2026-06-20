@@ -289,15 +289,6 @@ if args.list:
     for model in llm_only:
         print(model.model_key)
     sys.exit()
-model = lms.llm(model_id, config = {
-    "temperature" : args.temperature,
-    "contextLength" : args.context,
-    "repeatPenalty" : args.penalty,
-    "maxTokens" : args.tokens
-})
-if args.debug:
-    print('Model config:', model.get_load_config())
-    print('Model info:', model.get_info())
 
 if args.sysprompt and len(args.sysprompt) > 0:
     system_prompts = list() # override default
@@ -317,6 +308,16 @@ if args.sysprompt_dump:
     for prompt in system_prompts:
         print(prompt)
     sys.exit()
+
+model = lms.llm(model_id, config = {
+    "temperature" : args.temperature,
+    "contextLength" : args.context,
+    "repeatPenalty" : args.penalty,
+    "maxTokens" : args.tokens
+})
+if args.debug:
+    print('Model config:', model.get_load_config())
+    print('Model info:', model.get_info())
 
 if args.images:
     # TODO: all sysprompts after the first should fall through to

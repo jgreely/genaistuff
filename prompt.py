@@ -24,6 +24,11 @@ import secrets
 partial_enhancement_regexp = r'( *)@<(?:([_A-Za-z0-9]+):)? *([^>]+) *>@( *)'
 
 default_vision_model='qwen/qwen3-vl-4b'
+# qwen can go into a tight spin and never return without this
+vision_config={
+    "maxTokens": 1500,
+    "repeatPenalty": 1.1
+}
 default_vision_prompt="""
 Analyze this image and provide a detailed image-generation prompt for
 advanced models, as a single flowing paragraph. Focus on the subject,
@@ -216,14 +221,17 @@ parser.add_argument('-C', '--context',
 )
 parser.add_argument('-p', '--penalty',
     type = float,
-    default = 1.0,
+    default = 1.1, # some models can spin endlessly at 1.0 w/LM Studio
     help = 'repetition penalty, >1.0 reduces repetitive crap (adjust gently).'
 )
 parser.add_argument('-T', '--tokens',
     type = int,
-    default = 1000,
-    help = 'maximum number of tokens to return from one request (default=1000).'
+    default = 1500,
+    help = 'maximum number of tokens to return from one request (default=1500).'
 )
+parser.add_argument('-n', '--no-think',
+    action='store_true',
+    help='send custom config to disable thinking mode')
 parser.add_argument('-u', '--url',
     type= str,
     help='URL of LM Studio server')
@@ -309,11 +317,16 @@ if args.sysprompt_dump:
         print(prompt)
     sys.exit()
 
+if args.no_think:
+    custom_fields = { "enableThinking": False }
+else:
+    custom_fields = { }
 model = lms.llm(model_id, config = {
     "temperature" : args.temperature,
     "contextLength" : args.context,
     "repeatPenalty" : args.penalty,
-    "maxTokens" : args.tokens
+    "maxTokens" : args.tokens,
+    "customFields": custom_fields
 })
 if args.debug:
     print('Model config:', model.get_load_config())
@@ -333,7 +346,7 @@ if args.images:
         chat.add_system_prompt(system_prompt)
         chat.add_user_message("Describe the attached image",
             images=[image_handle])
-        prediction = model.respond(chat)
+        prediction = model.respond(chat, config=vision_config)
         response = prediction.content
         if args.debug:
             print(f'DEBUG: |{system_prompt}|{response}|',

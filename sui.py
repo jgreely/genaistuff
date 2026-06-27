@@ -1202,16 +1202,26 @@ def webp(ctx, dry_run, resize, files):
 @click.argument('files', nargs=-1)
 @click.pass_context
 def resize(ctx, dry_run, resize, longside, shortside, files):
-    """resize PNG files (default 50%), preserving metadata"""
-    # TODO: preserve input format (resize JPG to JPG)
-    # TODO: parse -j/-w to convert PNG to JPG/WEBP
+    """resize PNG/JPG/WEBP files (default 50%), preserving metadata"""
+    if ctx.parent.params['webp_output']:
+        newext = 'webp'
+    elif ctx.parent.params['jpeg_output']:
+        newext = 'jpg'
+    else:
+        newext = 'png'
     for file in files:
         if os.path.isfile(file):
             params = json.dumps(get_file_params(file, True))
             with Image.open(file) as image:
-                base, ext = os.path.splitext(file)
-                outname = f"{base}-small.png"
                 ops = dict()
+                base, oldext = os.path.splitext(file)
+                oldext = oldext.lstrip('.').lower()
+                if newext in ['jpg', 'webp']:
+                    ops[newext] = True
+                elif oldext in ['jpg', 'webp']:
+                    newext = oldext
+                    ops[newext] = True
+                outname = f"{base}-small.{newext}"
                 if resize < 100:
                     ops['size'] = resize
                 if longside and longside > 0:

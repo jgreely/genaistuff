@@ -25,8 +25,10 @@ else:
     files = [x.rstrip() for x in sys.stdin]
 
 for file in files:
-    if os.path.exists(file) and re.search(r'[ &():#!\[\]]+', file):
+    if os.path.exists(file) and re.search(r'[-% &():#!\[\]]+', file):
         newfile = multi_replace(file, [
+            ( r'%[0-9A-F][0-9A-F]', '' ),
+            ( r'^-', '' ),
             ( r' +', '-' ),
             ( r'[&():#!\[\]]+', '-' ),
             ( r'-+', '-' ),

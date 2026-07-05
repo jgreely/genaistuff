@@ -37,10 +37,17 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
   model, and default system prompt can be set in `~/.pyprompt`
   If the strings `@<` and `>@` are detected in a prompt, pass *only*
   the section between them to the LLM, keeping the rest intact.
+    - `-i imagefile`: upload an image and send an appropriate sysprompt
     - `-l`: list available models on the server
     - `-m`: use a specific model
+    - `-n`: disable thinking
+    - `-r`: don't strip newlines from output (mostly for Markdown)
+    - `-s`: list available sysprompts from the file `~/.pyprompt`
+    - `-S`: dump the contents of the selected sysprompt
     - `-t`: set model temperature
-    - sysprompt: search `~/.pyprompt` for an alternative system prompt
+    - `-u`: set the URL of the LM Studio server
+    - sysprompt: search `~/.pyprompt` for an alternative system prompt;
+      multiple sysprompt arguments will be invoked in order.
 
 * prompt-server/prompt_ollama_server.py - minimal Ollama server to feed
   generated prompts to the SwarmUI GUI via the MagicPrompt extension.
@@ -48,7 +55,9 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
   bunch of one-line prompts, and the server will return them as chat
   responses, in the order they were uploaded. 
   `prompt_server_count.sh` returns the current number of loaded
-  prompts and `prompt_server_clear.sh` deletes them all.
+  prompts and `prompt_server_clear.sh` deletes them all. Set your
+  prompt to `<param[mpusecache]:false><mpprompt:test>` and hit
+  "Generate Forever".
 
 * ol2lm.py - shim that emulates an Ollama server and forwards
   requests to LM Studio. Works for both the MagicPrompt and

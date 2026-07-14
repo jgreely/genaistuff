@@ -801,6 +801,9 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                     for rule in rule_arg.split(','):
                         image_params = s.merge_params([image_params,
                             s.get_rule_params(rule)])
+                for param in array_params:
+                    if param in image_params and type(image_params[param]) is str:
+                        image_params[param] = [image_params[param]]
             if params:
                 for param_arg in params:
                     for param in param_arg.split(','):

@@ -24,7 +24,7 @@ def get_directory_state(directory):
         # Get the directory's modification time
         mtime = directory.stat().st_mtime
         # Count image files
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.heic'}
+        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.heic', 'webp'}
         file_count = sum(1 for f in directory.iterdir() 
                         if f.is_file() and f.suffix.lower() in image_extensions)
         return (mtime, file_count)

@@ -49,6 +49,9 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
     - sysprompt: search `~/.pyprompt` for an alternative system prompt;
       multiple sysprompt arguments will be invoked in order.
 
+* sysprompts/*.txt - prompt-enhancement system prompts collected from
+  various models. `prompt.py` currently defaults to `hidream.txt`.
+
 * prompt-server/prompt_ollama_server.py - minimal Ollama server to feed
   generated prompts to the SwarmUI GUI via the MagicPrompt extension.
   You use the companion script `prompt_server_feed.sh` to upload a

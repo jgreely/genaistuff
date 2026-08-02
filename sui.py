@@ -253,7 +253,10 @@ class stealth:
                     break
             if offset >= len(alphabits):
                 break
-        im.save(outfile, 'WEBP', quality=80, method=6)
+        try:
+            im.save(outfile, 'WEBP', quality=80, method=6)
+        except Exception as e:
+            raise click.ClickException(f"{outfile}: {e}")
 
 
 class swarmui:
@@ -406,7 +409,7 @@ class swarmui:
             'is_edit': False
         })
         if 'preset_fail' in response:
-            raise click.UsageError(f"{name}: {response['preset_fail']}")
+            raise click.ClickException(f"{name}: {response['preset_fail']}")
 
     def _get(self, call:str, *, timeout=30):
         """Send GET request to a SwarmUI endpoint"""
@@ -572,7 +575,7 @@ class process:
                 try:
                     image.save(op['save'], exif=exif)
                 except Exception as e:
-                    click.FileError(f"{op['save']}: {e}")
+                    raise click.ClickException(f"{op['save']}: {e}")
                 exiftool.ExifToolHelper().set_tags(op['save'],
                     {'EXIF:UserComment': json.dumps(json.loads(image_meta))},
                     params=['-overwrite_original', '-preserve'])
@@ -585,7 +588,7 @@ class process:
                 try:
                     image.save(op['save'], exif=exif, pnginfo=png_meta)
                 except Exception as e:
-                    click.FileError(f"{op['save']}: {e}")
+                    raise click.ClickException(f"{op['save']}: {e}")
         return image
 
     def as_json(self):
@@ -773,6 +776,10 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
         port=ctx.parent.params['port']
     )
     s.params = ctx.parent.params
+    if s.params['pre'] and '/' in s.params['pre']:
+        outdir = os.path.dirname(s.params['pre'])
+        if not os.path.exists(outdir):
+            raise click.ClickException(f"directory '{outdir}' does not exist")
     session_id = s.create_session()
     s.session_id = session_id
     if sources:
@@ -876,6 +883,9 @@ def gen(ctx, model, loras, params, rules, sources, dry_run, save_on_server, lut_
                 rounding = image_params['rounding']
             else:
                 rounding = 64
+            # TODO: apply to aspect set in rules as well
+            # TODO: once width/height finalized, force params['aspectratio']
+            # to 'Custom' and nuke params['sidelength']
             if 'aspect' in s.params and s.params['aspect'] is not None:
                 if 'sidelength' in s.params and s.params['sidelength'] is not None:
                     if '/' in s.params['sidelength']:
@@ -1131,7 +1141,7 @@ def rename(ctx, dry_run, files):
             try:
                 os.rename(file, outname)
             except Exception as e:
-                click.FileError(f"rename '{file}' to '{outname}': {e}")
+                raise click.ClickException(f"rename '{file}' to '{outname}': {e}")
         seq += 1
 
 
@@ -1356,9 +1366,9 @@ def substring_match(item:str, match_list:list, /, match_type='match'):
     """
     matches = [x for x in match_list if item.casefold() in x.casefold()]
     if len(matches) > 1:
-        raise click.UsageError(f"Error: ambiguous {match_type} '{item}', matches:\n  {'\n  '.join(matches)}")
+        raise click.ClickException(f"Error: ambiguous {match_type} '{item}', matches:\n  {'\n  '.join(matches)}")
     elif len(matches) == 0:
-        raise click.UsageError(f"Error: {match_type} '{item}' not found on server")
+        raise click.ClickException(f"Error: {match_type} '{item}' not found on server")
     return matches[0]
 
 

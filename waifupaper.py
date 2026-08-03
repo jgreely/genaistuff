@@ -16,6 +16,8 @@ import time
 from pathlib import Path
 from collections import defaultdict
 
+image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.heic', '.webp'}
+
 
 def get_directory_state(directory):
     """Get the current state of a directory (modification time and file count)."""
@@ -24,7 +26,6 @@ def get_directory_state(directory):
         # Get the directory's modification time
         mtime = directory.stat().st_mtime
         # Count image files
-        image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.heic', 'webp'}
         file_count = sum(1 for f in directory.iterdir() 
                         if f.is_file() and f.suffix.lower() in image_extensions)
         return (mtime, file_count)
@@ -34,7 +35,6 @@ def get_directory_state(directory):
 
 def get_image_files(directory):
     """Get all image files from a directory."""
-    image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.heic'}
     directory = Path(directory)
     
     if not directory.exists():

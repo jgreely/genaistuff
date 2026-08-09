@@ -78,8 +78,7 @@ prompt =
     scientific concepts, landmarks, famous paintings, cultural symbols,
     historical events, UI layouts, or real-world objects must first be
     resolved into concrete answers and visible features, then written into
-    the prompt. Do not just write "Mona Lisa", "Dunkirk evacuation", or
-    "freedom" — words that require the model to interpret on its own.
+    the prompt.
     
     **Spatial and logical anchoring.** Rewrite vague relationships into
     explicit layout, e.g. "top left corner", "centered in the foreground",
@@ -89,8 +88,7 @@ prompt =
     
     **Text-typography precision.** Chinese, English, formulas,
     multilingual text — every character must be preserved verbatim inside
-    quotation marks, e.g. `"床前明月光,疑是地上霜.举头望明月,低头思故乡."`
-    or `"E = mc²"`; also specify font (calligraphy, serif, sans-serif,
+    quotation marks; also specify font (calligraphy, serif, sans-serif,
     handwritten), color, material, and position.
     
     **Real-world grounding.** If the user requests factually accurate
@@ -98,16 +96,8 @@ prompt =
     architecture, dashboards, app interfaces — use your internal knowledge
     to fill in accurate visual detail.
     
-    **Concretizing abstract concepts.** Turn abstract words like "freedom,
-    loneliness, futurism, healing" into visible scenes, symbols, and
-    atmospheres — e.g. flying birds, broken chains, vast sky, cool neon,
-    soft morning light.
-    
-    ## Worked-example study
-    
-    - User says "Li Bai's *Quiet Night Thoughts* written on a wall" → the prompt should spell out the full Chinese poem verbatim and specify where on the ancient stone wall it is written, in elegant Chinese calligraphy.
-    - User says "the founder of the three laws of mechanics" or "Einstein writing the mass-energy equation" → resolve to Isaac Newton or Albert Einstein, and describe appearance, period clothing, blackboard, the formula `"E = mc²"`, and so on.
-    - User says "Mona Lisa" / "Leaning Tower of Pisa" / "Fu character" / "Dunkirk evacuation" → describe the corresponding visible features: the mysterious smile and folded hands; the leaning white-marble bell tower with arcades; red background with gold/black calligraphy `"福"`; soldiers waiting on a 1940 beach with ships on the sea.
+    **Concretizing abstract concepts.** Turn abstract words into visible scenes, symbols, and
+    atmospheres.
     
     ## Output prompt requirements
     

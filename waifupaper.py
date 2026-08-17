@@ -92,7 +92,8 @@ def set_wallpaper(image_path, display_index=0):
             capture_output=True
         )
     except subprocess.CalledProcessError as e:
-        print(f"Warning: Failed to set wallpaper for display {display_index + 1}: {e}", file=sys.stderr)
+        if args.verbose:
+            print(f"Warning: Failed to set wallpaper for display {display_index + 1}: {e}", file=sys.stderr)
 
 
 def main():
@@ -251,7 +252,7 @@ Examples:
                 if current_state != directory_states.get(directory):
                     display_num = display_data['display_index'] + 1
                     if args.verbose:
-                        print(f"📁 Directory changed: '{directory}' - reloading images...")
+                        print(f"   Directory changed: '{directory}' - reloading images...")
                     
                     new_images = get_image_files(directory)
                     

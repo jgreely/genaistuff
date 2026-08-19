@@ -16,6 +16,7 @@ import time
 from pathlib import Path
 from collections import defaultdict
 
+verbose = False
 image_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.gif', '.tiff', '.tif', '.heic', '.webp'}
 
 
@@ -92,7 +93,7 @@ def set_wallpaper(image_path, display_index=0):
             capture_output=True
         )
     except subprocess.CalledProcessError as e:
-        if args.verbose:
+        if verbose:
             print(f"Warning: Failed to set wallpaper for display {display_index + 1}: {e}", file=sys.stderr)
 
 
@@ -159,6 +160,9 @@ Examples:
     )
     
     args = parser.parse_args()
+    if args.verbose:
+        global verbose
+        verbose = True
     
     # Determine which displays to affect
     selected_displays = []
@@ -181,7 +185,7 @@ Examples:
     
     # Get display count
     num_displays = get_display_count()
-    if args.verbose:
+    if verbose:
         print(f"Detected {num_displays} display(s)")
     
     # Validate selected displays
@@ -207,7 +211,7 @@ Examples:
     else:
         managed_displays = sorted(selected_displays)
     
-    if args.verbose:
+    if verbose:
         print(f"Managing display(s): {', '.join(str(d + 1) for d in managed_displays)}")
     
     for i in managed_displays:
@@ -232,10 +236,10 @@ Examples:
         # Track initial directory state
         directory_states[directory] = get_directory_state(directory)
         
-        if args.verbose:
+        if verbose:
             print(f"Display {i + 1}: {len(images)} images from '{directory}'")
     
-    if args.verbose:
+    if verbose:
         print(f"\nRotating wallpapers every {args.interval} seconds")
         print("Monitoring directories for changes...")
         print("Press Ctrl+C to stop\n")
@@ -251,7 +255,7 @@ Examples:
                 # If directory state changed, reload images
                 if current_state != directory_states.get(directory):
                     display_num = display_data['display_index'] + 1
-                    if args.verbose:
+                    if verbose:
                         print(f"   Directory changed: '{directory}' - reloading images...")
                     
                     new_images = get_image_files(directory)
@@ -265,7 +269,7 @@ Examples:
                     display_data['index'] = 0
                     directory_states[directory] = current_state
                     
-                    if args.verbose:
+                    if verbose:
                         print(f"   Loaded {len(new_images)} images for display {display_num}\n")
             
             # Set wallpaper for each display
@@ -277,7 +281,7 @@ Examples:
                 image_path = images[current_index]
                 image_name = Path(image_path).name
                 
-                if args.verbose:
+                if verbose:
                     print(f"Display {actual_display_idx + 1}: {image_name}")
                 set_wallpaper(image_path, actual_display_idx)
                 
@@ -287,19 +291,18 @@ Examples:
                 # Reshuffle when we complete a cycle (if not sorting)
                 if display_data['index'] == 0 and not args.sort and iteration > 0:
                     random.shuffle(display_data['images'])
-                    if args.verbose:
+                    if verbose:
                         print(f"  → Reshuffled images for display {actual_display_idx + 1}")
             
             iteration += 1
-            if args.verbose:
+            if verbose:
                 print()
             time.sleep(args.interval)
             
     except KeyboardInterrupt:
-        if args.verbose:
+        if verbose:
             print("\n\nWallpaper rotation stopped.")
         sys.exit(0)
-
 
 if __name__ == '__main__':
     main()

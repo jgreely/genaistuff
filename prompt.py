@@ -12,6 +12,7 @@ importlib.reload(sys)
 import argparse
 import re
 import configparser
+from string import Template
 
 import lmstudio as lms
 import secrets
@@ -133,6 +134,12 @@ def multi_replace(text, replacements):
         text = re.sub(pattern, replacement, text, flags = re.DOTALL)
     return text
 
+variables = {}
+
+def promptvars(prompt):
+    return Template(prompt).safe_substitute(variables)
+
+
 # expects a match to the regexp r'( *)@<(?:([_A-Za-z0-9]+):)? *([^>]+) *>@( *)'
 #   @< prompt >@
 #   @<label: prompt >@
@@ -147,13 +154,13 @@ def partial_enhance(m):
     prompt = m.group(3)
     suffix = m.group(4)
     if sysprompt and config.has_option('DEFAULT', sysprompt):
-        chat.add_system_prompt(config.get('DEFAULT', sysprompt))
+        chat.add_system_prompt(promptvars(config.get('DEFAULT', sysprompt)))
     elif sysprompt:
         print(f"system prompt '{sysprompt}' not found in ~/.pyprompt")
         sys.exit()
     else:
-        chat.add_system_prompt(system_prompt)
-    chat.add_user_message(prompt)
+        chat.add_system_prompt(promptvars(system_prompt))
+    chat.add_user_message(promptvars(prompt))
     # DEBUG:
     # explicit random seed for debugging an llmster issue
     # prediction = model.respond(chat, config={"seed": secrets.randbits(64)})
@@ -239,6 +246,9 @@ parser.add_argument('-c', '--clipstrip',
     action='store_true',
     help='remove CLIP emphasis "(...:1.1)", "[...:0.5]"'
 )
+parser.add_argument('-v', '--variables',
+    action='append', default=[],
+    help='variables to be substituted into sysprompt (var=value)')
 parser.add_argument('-d', '--debug',
     action='store_true',
     help='print raw response from LLM, to catch formatting errors and refusals'
@@ -263,9 +273,9 @@ if os.path.isfile(config_file):
     config.read(config_file)
 system_prompts = list()
 if args.images:
-    system_prompts.append(default_vision_prompt)
+    system_prompts.append(default_vision_prompt.lstrip())
 else:
-    system_prompts.append(config.get('DEFAULT', 'prompt'))
+    system_prompts.append(config.get('DEFAULT', 'prompt').lstrip())
 
 SERVER_API_HOST = config.get('DEFAULT', 'url', fallback='localhost:1234')
 if args.url:
@@ -297,18 +307,27 @@ if args.sysprompt and len(args.sysprompt) > 0:
     for prompt_key in args.sysprompt:
         if prompt_key in ['default', '-', '.']:
             if args.images:
-                system_prompts.append(default_vision_prompt)
+                system_prompts.append(default_vision_prompt.lstrip())
             else:
-                system_prompts.append(config.get('DEFAULT', 'prompt'))
+                system_prompts.append(config.get('DEFAULT', 'prompt').lstrip())
         elif config.has_option('DEFAULT', prompt_key):
-            system_prompts.append(config.get('DEFAULT', prompt_key))
+            system_prompts.append(config.get('DEFAULT', prompt_key).lstrip())
         else:
             print(f"system prompt '{prompt_key}' not found in ~/.pyprompt")
             sys.exit()
 
+if args.variables:
+    for arg in args.variables:
+        if '=' in arg:
+            key, val = arg.split('=')
+        else:
+            print(f"invalid variable definition '{arg}'")
+            sys.exit()
+        variables[key] = val
+
 if args.sysprompt_dump:
     for prompt in system_prompts:
-        print(prompt)
+        print(promptvars(prompt))
     sys.exit()
 
 if args.no_think:
@@ -337,7 +356,7 @@ if args.images:
             print(e)
             sys.exit()
         chat = lms.Chat()
-        chat.add_system_prompt(system_prompt)
+        chat.add_system_prompt(promptvars(system_prompt))
         chat.add_user_message("Describe the attached image",
             images=[image_handle])
         prediction = model.respond(chat, config=vision_config)
@@ -381,8 +400,8 @@ for prompt in sys.stdin:
         else:
             # fresh chat each time, to prevent context cruft
             chat = lms.Chat()
-            chat.add_system_prompt(system_prompt)
-            chat.add_user_message(prompt)
+            chat.add_system_prompt(promptvars(system_prompt))
+            chat.add_user_message(promptvars(prompt))
             prediction = model.respond(chat)
             response = prediction.content
             if args.debug:

@@ -546,6 +546,20 @@ class process:
             if size < 100:
                 image = image.resize((round(image.width * size/100),
                     round(image.height * size/100)))
+        if 'retro' in op:
+            grid, palette = op['retro']
+            if image.mode == 'RGBA':
+                image = image.convert('RGB')
+            downsampled = image.resize((image.width // grid, image.height // grid),
+                Image.Resampling.LANCZOS)
+            quantized = downsampled.quantize(colors=palette,
+                method=Image.Quantize.MAXCOVERAGE)
+            pixelated = quantized.resize((image.width, image.height),
+                Image.Resampling.NEAREST)
+            if pixelated.mode == 'P':
+                pixelated = pixelated.convert('RGB')
+            image = pixelated
+
         if 'sharp' in op:
             image = image.filter(ImageFilter.UnsharpMask(
                 radius=float(op['sharp']['r']), percent=int(op['sharp']['p']),
@@ -1261,8 +1275,6 @@ def resize(ctx, dry_run, resize, longside, shortside, files):
 @click.pass_context
 def crop(ctx, dry_run, width, height, origin, files):
     """crop image files, preserving metadata; defaults to centered"""
-    # TODO: preserve input format (crop JPG to JPG)
-    # TODO: parse -j/-w to convert PNG to JPG/WEBP
     for file in files:
         if os.path.isfile(file):
             params = json.dumps(get_file_params(file, True))
@@ -1301,6 +1313,39 @@ def crop(ctx, dry_run, width, height, origin, files):
                     print(file, outname, x, y, x+width, y+height)
                 elif 'save' in ops:
                     process(ops).apply(image)
+
+
+@cli.command()
+@click.option('-g', '--grid', type=int, default=5,
+    help='NxN grid to pixelize images to')
+@click.option('-p', '--palette', type=int, default=64,
+    help='size of palette to posterize images to')
+@click.argument('files', nargs=-1)
+@click.pass_context
+def retro(ctx, grid, palette, files):
+    """pixelize and flatten the colors to emulate retro game images"""
+    for file in files:
+        if os.path.isfile(file):
+            params = json.dumps(get_file_params(file, True))
+            with Image.open(file) as image:
+                ops = dict()
+                base, ext = os.path.splitext(file)
+                ext = ext.lstrip('.')
+                if ctx.parent.params['webp_output']:
+                    ops['webp'] = True
+                    ext = 'webp'
+                elif ctx.parent.params['jpeg_output']:
+                    ops['jpg'] = True
+                    ext = 'jpg'
+                elif ext.lower() != 'png':
+                    ops[ext.lower()] = True
+                else:
+                    ext = 'png'
+                outname = f"{base}-retro.{ext}"
+                ops['meta'] = params
+                ops['save'] = outname
+                ops['retro'] = (grid, palette)
+                process(ops).apply(image)
 
 
 @cli.command()

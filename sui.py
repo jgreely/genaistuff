@@ -1004,14 +1004,26 @@ def params(ctx, json_output, verbose, prompt, files):
             print(json.dumps(output[0], sort_keys=True, indent=4))
 
 @cli.command()
+@click.option('-o', '--original-prompt', is_flag=True,
+    help='if original_prompt is present, print that instead')
 @click.argument('files', nargs=-1)
 @click.pass_context
-def prompt(ctx, files):
+def prompt(ctx, original_prompt, files):
     """shortcut for 'params -p'"""
     for file in files:
-        params = get_file_params(file)
+        if original_prompt:
+            params = get_file_params(file, verbose=True)
+        else:
+            params = get_file_params(file)
         if params:
-            print(params['prompt'])
+            if original_prompt:
+                if 'sui_extra_data' in params:
+                    if 'original_prompt' in params['sui_extra_data']:
+                        print(params['sui_extra_data']['original_prompt'])
+                    else:
+                        print(params['sui_image_params']['prompt'])
+            else:
+                print(params['prompt'])
 
 @cli.command()
 @click.option('-v', '--verbose', is_flag=True,

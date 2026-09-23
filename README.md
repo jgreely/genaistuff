@@ -49,6 +49,12 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
     - sysprompt: search `~/.pyprompt` for an alternative system prompt;
       multiple sysprompt arguments will be invoked in order.
 
+* dedupelines.py - use SentenceTransformers to detect very-near-duplicate
+  lines in text files up to ~1 million lines (takes a long time on larger
+  files with the CPU version of `faiss`). I've set the default threshold
+  very high, because LLM-generated prompts often share a similar enough
+  structure to trigger false positives.
+
 * sysprompts/*.txt - prompt-enhancement system prompts collected from
   various models. `prompt.py` currently defaults to `hidream.txt`.
 
@@ -101,6 +107,11 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * requests
 * uvicorn (ol2lm.py & prompt-server/prompt_ollama_server.py)
 * websockets (sui-ws.py only)
+* faiss-cpu (dedupelines only, requires slight code change for faiss-cuda)
+* networkx (dedupelines only)
+* numpy (dedupelines only)
+* sentence_transformers (dedupelines only)
+
 
 ## My image-generation workflow
 

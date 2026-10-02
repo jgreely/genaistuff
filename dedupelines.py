@@ -11,6 +11,10 @@ worse at larger sizes.
 TODO: optimize memory use; currently still has some leftovers from
 being LLM-written as multiple sequential scripts. This chews up a lot
 of memory for large datasets.
+
+TODO: skip over comment lines; store them separately to make sure
+they get reinserted at the appropriate place.
+
 """
 
 import os
@@ -55,7 +59,10 @@ parser.add_argument('file',
     help='file to de-dupe'
 )
 args=parser.parse_args()
-THRESHOLD = args.threshold
+if args.threshold > 1:
+    THRESHOLD = args.threshold / 100
+else:
+    THRESHOLD = args.threshold
 K = args.neighbors
 
 if args.output:

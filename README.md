@@ -90,6 +90,9 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 
 * namescrub.py - trivial batch-rename script to strip out special characters
 
+* gentitle.py - use a vision model to generate genre-novel book titles
+  and meaningful file names (with -f).
+
 * randompeople.yaml - dynamicprompts wildcards converted from a
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with

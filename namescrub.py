@@ -3,6 +3,10 @@
 Scrub special characters from file and directory names in
 either STDIN or arguments. Turns out my archive of downloaded
 pictures is full of garbage names.
+
+TODO: strip multiple conflicting extensions, keeping only the
+one that actually applies, and normalizing it to lowercase
+and standard (jpg not jpeg).
 """
 
 import os

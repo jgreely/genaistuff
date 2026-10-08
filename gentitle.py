@@ -7,6 +7,7 @@ TODO: add uncensoring sysprompt option
 
 import io
 import os
+import re
 import sys
 import json
 import base64
@@ -62,6 +63,12 @@ parser.add_argument('-b', '--base-url',
 parser.add_argument('-f', '--filename',
     action='store_true',
     help='generate a filename instead of a book title')
+parser.add_argument('-c', '--config',
+    default=os.path.expanduser('~/.gen'),
+    help='config file to read base url & model from, as 'base=...', 'model=...' (default ~/.gen)')
+parser.add_argument('-M', '--list-models',
+    action='store_true',
+    help='list all models available on the server')
 parser.add_argument('-m', '--model',
     # qwen/qwen3-vl-4b doesn't make very good filenames
     default="google/gemma-4-31b-qat",
@@ -69,6 +76,19 @@ parser.add_argument('-m', '--model',
 parser.add_argument('-n', '--dryrun',
     action='store_true',
     help='just print the resolved prompt without sending it to the server')
+parser.add_argument('--max-tokens',
+    default=32768,
+    help='max tokens limit')
+parser.add_argument('-r', '--reasoning',
+    choices=['none', 'low', 'medium', 'high'],
+    default='none',
+    help='set thinking mode (default: none)')
+parser.add_argument('--temperature',
+    default=0.6,
+    help='LLM temperature parameter (default 0.6)')
+parser.add_argument('--verbose',
+    action='store_true',
+    help='print reasoning content before output')
 parser.add_argument('-D', '--debug',
     action='store_true',
     help='print the full JSON response')
@@ -77,6 +97,28 @@ parser.add_argument('file',
     help='image file to analyze'
 )
 args=parser.parse_args()
+
+if os.path.exists(args.config):
+    with open(args.config) as f:
+        for line in f:
+            if re.search(r'^#|^ *$', line):
+                continue
+            if '=' in line:
+                var,val = line.strip().split('=', 1)
+                if var == 'base':
+                    args.base_url = val
+                elif var == 'model':
+                    args.model = val
+
+if args.list_models:
+    client = OpenAI(base_url=f"http://{args.base_url}/v1",
+        api_key="lm-studio",
+        timeout=60*30)
+    models = [x.id for x in client.models.list()]
+    models.sort()
+    for model in models:
+        print(model)
+    sys.exit()
 
 model = args.model
 if args.filename:
@@ -122,21 +164,31 @@ for file in args.file:
             model=model,
             messages=payload,
             max_tokens=32768,
+            temperature=args.temperature,
             timeout=60*30,
+            reasoning_effort=args.reasoning,
         )
     except Exception as e:
         print(f"{file}: {e}", file=sys.stderr)
         continue
+    if args.reasoning == 'none':
+        reasoning_content = {'reasoning': 'disabled'}
+    else:
+        reasoning_content = response.choices[0].message.reasoning_content
+    content = response.choices[0].message.content
     if args.debug:
         print('REQUEST:')
         print(json.dumps(payload, indent=4))
         print('RESPONSE:')
         print(response)
         print('-----')
+    if args.verbose:
+        print(reasoning_content)
+        print('-----')
     if args.filename:
         dir = os.path.dirname(file)
         base, ext = os.path.splitext(file)
         dir = f"{dir}/" if dir else ""
-        print(f'mv "{file}" "{dir}{response.choices[0].message.content}{ext.lower()}"', flush=True)
+        print(f'mv "{file}" "{dir}{content}{ext.lower()}"', flush=True)
     else:
-        print(response.choices[0].message.content, flush=True)
+        print(content, flush=True)

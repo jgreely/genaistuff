@@ -49,6 +49,14 @@ def encode_image_to_base64(image_path, dryrun):
     mime_type = "image/jpeg"
     return f"data:{mime_type};base64,{encoded_string}"
 
+options = {
+    'base_url': 'localhost:1234',
+    'model': 'google/gemma-4-31b-qat',
+    'max_tokens': 32768,
+    'reasoning': 'low',
+    'temperature': 0.6,
+}
+
 parser = argparse.ArgumentParser(
     prog='gentitle',
     formatter_class = argparse.RawDescriptionHelpFormatter,
@@ -58,34 +66,33 @@ parser = argparse.ArgumentParser(
     """
 )
 parser.add_argument('-b', '--base-url',
-    default='localhost:1234',
-    help='host:port to connect to (default: localhost:1234)')
+    type=str,
+    help=f"host:port to connect to (default: {options['base_url']})")
 parser.add_argument('-f', '--filename',
     action='store_true',
     help='generate a filename instead of a book title')
 parser.add_argument('-c', '--config',
     default=os.path.expanduser('~/.gen'),
-    help='config file to read base url & model from, as 'base=...', 'model=...' (default ~/.gen)')
+    help="config file to read base url & model from, as 'base=...', 'model=...' (default ~/.gen)")
 parser.add_argument('-M', '--list-models',
     action='store_true',
     help='list all models available on the server')
 parser.add_argument('-m', '--model',
-    # qwen/qwen3-vl-4b doesn't make very good filenames
-    default="google/gemma-4-31b-qat",
-    help='LLM to use for prompt generation (default: google/gemma-4-31b-qat)')
+    type=str,
+    help=f"LLM to use for prompt generation (default: {options['model']})")
 parser.add_argument('-n', '--dryrun',
     action='store_true',
     help='just print the resolved prompt without sending it to the server')
 parser.add_argument('--max-tokens',
-    default=32768,
-    help='max tokens limit')
+    type=int,
+    help=f"max tokens limit; leave some headroom for prompt (default {options['max_tokens']})")
 parser.add_argument('-r', '--reasoning',
     choices=['none', 'low', 'medium', 'high'],
-    default='none',
-    help='set thinking mode (default: none)')
+    type=str,
+    help=f"set thinking mode (default: {options['reasoning']})")
 parser.add_argument('--temperature',
-    default=0.6,
-    help='LLM temperature parameter (default 0.6)')
+    type=float,
+    help=f"LLM temperature parameter (default {options['temperature']})")
 parser.add_argument('--verbose',
     action='store_true',
     help='print reasoning content before output')
@@ -106,12 +113,39 @@ if os.path.exists(args.config):
             if '=' in line:
                 var,val = line.strip().split('=', 1)
                 if var == 'base':
+                    options['base_url'] = val
+                elif var == 'model':
+                    options['model'] = val
+                elif var == 'tokens':
+                    options['max_tokens'] = int(val)
+                elif var == 'temp':
+                    options['temperature'] = float(val)
+                elif var == 'think' or var == 'reason':
+                    options['reasoning'] = val
+argdict = vars(args)
+for key in argdict:
+    if argdict[key] != None:
+        options[key] = argdict[key] 
+if os.path.exists(args.config):
+    with open(args.config) as f:
+        for line in f:
+            if re.search(r'^#|^ *$', line):
+                continue
+            if '=' in line:
+                var,val = line.strip().split('=', 1)
+                if var == 'base':
                     args.base_url = val
                 elif var == 'model':
                     args.model = val
+                elif var == 'tokens':
+                    args.max_tokens = int(val)
+                elif var == 'temp':
+                    args.temperature = float(val)
+                elif var == 'think' or var == 'reason':
+                    args.reasoning = val
 
 if args.list_models:
-    client = OpenAI(base_url=f"http://{args.base_url}/v1",
+    client = OpenAI(base_url=f"http://{options['base_url']}/v1",
         api_key="lm-studio",
         timeout=60*30)
     models = [x.id for x in client.models.list()]
@@ -120,17 +154,16 @@ if args.list_models:
         print(model)
     sys.exit()
 
-model = args.model
 if args.filename:
     prompt=filename_prompt
 else:
     prompt=booktitle_prompt
 
 if args.dryrun:
-    print(f"Connecting to http://{args.base_url}/v1")
+    print(f"Connecting to http://{options['base_url']}/v1")
     print(f'Using prompt "{prompt}"')
 else:
-    client = OpenAI(base_url=f"http://{args.base_url}/v1", api_key="lm-studio",
+    client = OpenAI(base_url=f"http://{options['base_url']}/v1", api_key="lm-studio",
         timeout=60*30)
 
 Image.init() # load all plugins to find supported file extensions
@@ -161,12 +194,12 @@ for file in args.file:
         
     try:
         response = client.chat.completions.create(
-            model=model,
+            model=options['model'],
             messages=payload,
             max_tokens=32768,
-            temperature=args.temperature,
+            temperature=options['temperature'],
             timeout=60*30,
-            reasoning_effort=args.reasoning,
+            reasoning_effort=options['reasoning'],
         )
     except Exception as e:
         print(f"{file}: {e}", file=sys.stderr)

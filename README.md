@@ -93,6 +93,12 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * gentitle.py - use a vision model to generate genre-novel book titles
   and meaningful file names (with -f).
 
+* styles-llm.txt - random art styles generated with
+  `qwen3.8-flash-next-iq3_xxs` using
+  [Strata](https://github.com/niko1221/strata), tested against Krea 2
+  Turbo to ensure they had an interesting visual effect for both
+  foreground and background, and filtered with `dedupelines.py`.
+
 * randompeople.yaml - dynamicprompts wildcards converted from a
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with
@@ -104,6 +110,7 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * dynamicprompts (dp.py only)
 * fastapi (ol2lm.py & prompt-server/prompt_ollama_server.py)
 * lmstudio (prompt.py only)
+* openai (gentitle.py only)
 * pillow
 * PyExifTool
 * PyYAML (dp.py only)

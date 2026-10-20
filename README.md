@@ -102,6 +102,8 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * styles-llm.json - same prompts plus classification data for sorting
   and filtering.
 
+* artist-styles.json - classified version of [Juan's artist dataset](https://huggingface.co/datasets/jtreminio/sdxl-artists/raw/main/static/artist_prompts.js)
+
 * randompeople.yaml - dynamicprompts wildcards converted from a
   [heavily-randomized prompt](https://discord.com/channels/1243166023859961988/1396143088560242708)
   posted to the SwarmUI Discord channel by user Hippotes, with

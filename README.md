@@ -93,6 +93,11 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * gentitle.py - use a vision model to generate genre-novel book titles
   and meaningful file names (with -f).
 
+* clusterposes.py - use mediapipe to analyze a set of images each containing
+  a single human figure, and cluster them together by similar poses. This
+  is useful for locating near-duplicate poses that are worded differently
+  enough to sneak past `dedupelines.py`.
+
 * styles-llm.txt - random art styles generated with
   `qwen3.8-flash-next-iq3_xxs` using
   [Strata](https://github.com/niko1221/strata), tested against Krea 2
@@ -124,8 +129,11 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * websockets (sui-ws.py only)
 * faiss-cpu (dedupelines only, requires slight code change for faiss-cuda)
 * networkx (dedupelines only)
-* numpy (dedupelines only)
+* numpy (dedupelines and clusterposes only)
 * sentence_transformers (dedupelines only)
+* cv2 (clusterposes only)
+* mediapipe (clusterposes only)
+* sklearn (clusterposes only)
 
 
 ## My image-generation workflow

@@ -107,6 +107,16 @@ path. Yes, the best way to deal with EXIF in Python is a Perl script.
 * styles-llm.json - same prompts plus classification data for sorting
   and filtering.
 
+* styles-llm-cartoon.txt - random cartoonish art styles generated
+  as above; no duplication with `styles-llm.txt`.
+
+* styles-llm-cartoon.json - same prompts plus classification data for
+  sorting and filtering.
+
+* poses-llm-sexy.txt - random appealing poses generated with LLMs,
+  de-duped with `dedupelines.py`, then visually de-duped with
+  `clusterposes.py` and manual review.
+
 * artist-styles.json - classified version of [Juan's artist dataset](https://huggingface.co/datasets/jtreminio/sdxl-artists/raw/main/static/artist_prompts.js)
 
 * randompeople.yaml - dynamicprompts wildcards converted from a
